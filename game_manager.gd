@@ -611,18 +611,23 @@ func show_level_select_menu():
 	start_menu.visible = false
 	show_popup_window(
 		"Vybrat level",
-		"Vyber level který chceš hrát:",
+		"",
 		"Zrušit",
 		Callable(self, "go_to_desktop")
 	)
 
-	var size = get_window_content_size()
-	var level_names = ["Level 1: Souhlas s podmínkami", "Level 2: Nastavení soukromí", "Level 3: Ověření identity", "Level 4: Žádost o smazání dat", "Level 5: Finální test", "Bonus Level"]
-	var start_y = 200
-	var button_height = 45
-	var button_spacing = 10
+	if popup_label:
+		popup_label.visible = false
+	if popup_button:
+		popup_button.position = Vector2(get_window_content_size().x / 2 - 105, 410)
 
-	for i in range(1, 7):
+	var size = get_window_content_size()
+	var level_names = ["Level 1: Souhlas s podmínkami", "Level 2: Nastavení soukromí", "Level 3: Ověření identity", "Level 4: Žádost o smazání dat", "Level 5: Finální test", "Level 6: Tahací automat", "Bonus Level"]
+	var start_y = 70
+	var button_height = 40
+	var button_spacing = 8
+
+	for i in range(1, 8):
 		var level_button = Button.new()
 		level_button.name = "LevelButton" + str(i)
 		level_button.text = level_names[i - 1]
@@ -642,6 +647,8 @@ func show_level_select_menu():
 			5:
 				level_button.pressed.connect(start_level_5_direct)
 			6:
+				level_button.pressed.connect(start_level_6_direct)
+			7:
 				level_button.pressed.connect(start_bonus_level_direct)
 
 		content_root.add_child(level_button)
@@ -808,6 +815,10 @@ func start_level_5():
 	load_level("res://levels/Level5.tscn", "Finální test", Callable(self, "_on_level_5_finished"))
 
 
+func start_level_6():
+	load_level("res://levels/Level6.tscn", "Tahací automat", Callable(self, "_on_level_6_finished"))
+
+
 func _on_level_1_finished():
 	start_level_2()
 
@@ -840,6 +851,15 @@ func _on_level_4_finished():
 
 
 func _on_level_5_finished():
+	show_popup_window(
+		"Level zvládnut",
+		"Záhadný systém aktivuje poslední zkoušku.",
+		"Pokračovat",
+		Callable(self, "start_level_6")
+	)
+
+
+func _on_level_6_finished():
 	show_final_screen()
 
 
@@ -866,6 +886,10 @@ func start_level_4_direct():
 
 func start_level_5_direct():
 	start_level_5()
+
+
+func start_level_6_direct():
+	start_level_6()
 
 
 func start_bonus_level_direct():
