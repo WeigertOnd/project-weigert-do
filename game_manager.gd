@@ -13,6 +13,7 @@ var clock_label
 var start_menu
 var start_menu_title
 var menu_game_button
+var menu_level_select_button
 var menu_continue_button
 var menu_shutdown_button
 
@@ -157,6 +158,13 @@ func build_desktop():
 	menu_game_button.pressed.connect(start_new_game)
 	start_menu.add_child(menu_game_button)
 
+	menu_level_select_button = Button.new()
+	menu_level_select_button.name = "MenuLevelSelectButton"
+	menu_level_select_button.text = "Vybrat level"
+	style_menu_button(menu_level_select_button)
+	menu_level_select_button.pressed.connect(show_level_select_menu)
+	start_menu.add_child(menu_level_select_button)
+
 	menu_continue_button = Button.new()
 	menu_continue_button.name = "MenuContinueButton"
 	menu_continue_button.text = "Pokračovat"
@@ -253,8 +261,8 @@ func layout_desktop():
 		clock_label.size = Vector2(76, 22)
 
 	if start_menu:
-		start_menu.position = Vector2(8, screen.y - 278)
-		start_menu.size = Vector2(250, 232)
+		start_menu.position = Vector2(8, screen.y - 326)
+		start_menu.size = Vector2(250, 280)
 
 		if start_menu_title:
 			start_menu_title.position = Vector2(14, 10)
@@ -264,12 +272,16 @@ func layout_desktop():
 			menu_game_button.position = Vector2(18, 56)
 			menu_game_button.size = Vector2(214, 40)
 
+		if menu_level_select_button:
+			menu_level_select_button.position = Vector2(18, 104)
+			menu_level_select_button.size = Vector2(214, 40)
+
 		if menu_continue_button:
-			menu_continue_button.position = Vector2(18, 104)
+			menu_continue_button.position = Vector2(18, 152)
 			menu_continue_button.size = Vector2(214, 40)
 
 		if menu_shutdown_button:
-			menu_shutdown_button.position = Vector2(18, 176)
+			menu_shutdown_button.position = Vector2(18, 224)
 			menu_shutdown_button.size = Vector2(214, 40)
 
 	layout_game_window()
@@ -595,6 +607,46 @@ func start_new_game():
 	start_level_1()
 
 
+func show_level_select_menu():
+	start_menu.visible = false
+	show_popup_window(
+		"Vybrat level",
+		"Vyber level který chceš hrát:",
+		"Zrušit",
+		Callable(self, "go_to_desktop")
+	)
+
+	var size = get_window_content_size()
+	var level_names = ["Level 1: Souhlas s podmínkami", "Level 2: Nastavení soukromí", "Level 3: Ověření identity", "Level 4: Žádost o smazání dat", "Level 5: Finální test", "Bonus Level"]
+	var start_y = 200
+	var button_height = 45
+	var button_spacing = 10
+
+	for i in range(1, 7):
+		var level_button = Button.new()
+		level_button.name = "LevelButton" + str(i)
+		level_button.text = level_names[i - 1]
+		level_button.position = Vector2(size.x / 2 - 120, start_y + (i - 1) * (button_height + button_spacing))
+		level_button.size = Vector2(240, button_height)
+		style_window_button(level_button)
+
+		match i:
+			1:
+				level_button.pressed.connect(start_level_1_direct)
+			2:
+				level_button.pressed.connect(start_level_2_direct)
+			3:
+				level_button.pressed.connect(start_level_3_direct)
+			4:
+				level_button.pressed.connect(start_level_4_direct)
+			5:
+				level_button.pressed.connect(start_level_5_direct)
+			6:
+				level_button.pressed.connect(start_bonus_level_direct)
+
+		content_root.add_child(level_button)
+
+
 func resume_game():
 	start_menu.visible = false
 
@@ -789,6 +841,43 @@ func _on_level_4_finished():
 
 func _on_level_5_finished():
 	show_final_screen()
+
+
+# =========================================================
+# DIRECT LEVEL START (for level select menu)
+# =========================================================
+
+func start_level_1_direct():
+	GameState.reset_system_control()
+	start_level_1()
+
+
+func start_level_2_direct():
+	start_level_2()
+
+
+func start_level_3_direct():
+	start_level_3()
+
+
+func start_level_4_direct():
+	start_level_4()
+
+
+func start_level_5_direct():
+	start_level_5()
+
+
+func start_bonus_level_direct():
+	if ResourceLoader.exists("res://levels/BonusLevel.tscn"):
+		load_level("res://levels/BonusLevel.tscn", "Korekční protokol", Callable(self, "_on_bonus_level_finished"))
+	else:
+		show_popup_window(
+			"CHYBA",
+			"Soubor bonus levelu nebyl nalezen:\nres://levels/BonusLevel.tscn",
+			"Zpět na plochu",
+			Callable(self, "go_to_desktop")
+		)
 
 
 # =========================================================
