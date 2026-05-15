@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://cmhisnk3gt1k7"]
+
+[ext_resource type="Script" uid="uid://dfx7i1qui6wbv" path="res://levels/level_2.gd" id="1_gljt1"]
+
+[node name="Level2" type="Node2D" unique_id=517962328]
+script = ExtResource("1_gljt1")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=186204342]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.078431375, 0.078431375, 0.09803922, 1)
+
+[node name="Label" type="Label" parent="." unique_id=1434309423]
+offset_left = 435.0
+offset_top = 193.0
+offset_right = 836.0
+offset_bottom = 216.0
+text = "Před pokračováním musíte souhlasit s podmínkami."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AgreeButton" type="Button" parent="." unique_id=197731443]
+offset_left = 275.0
+offset_top = 462.0
+offset_right = 436.0
+offset_bottom = 499.0
+text = "Souhlasím"
+
+[node name="NoButton" type="Button" parent="." unique_id=1371882297]
+offset_left = 837.0
+offset_top = 469.0
+offset_right = 998.0
+offset_bottom = 506.0
+text = "Nesouhlasím"
