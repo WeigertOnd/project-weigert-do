@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/level_8.gd" id="1_p3ydl"]
+
+[node name="Level8" type="Node2D"]
+script = ExtResource("1_p3ydl")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_right = 856.0
+offset_bottom = 520.0
+
+[node name="AgreeButton" type="Button" parent="."]
+offset_left = 251.0
+offset_top = 239.0
+offset_right = 411.0
+offset_bottom = 281.0
+text = "Souhlasím"
+
+[node name="NoButton" type="Button" parent="."]
+offset_left = 445.0
+offset_top = 239.0
+offset_right = 605.0
+offset_bottom = 281.0
+text = "Nesouhlasím"

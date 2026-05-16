@@ -616,23 +616,33 @@ func show_level_select_menu():
 		Callable(self, "go_to_desktop")
 	)
 
+	var size = get_window_content_size()
+
 	if popup_label:
 		popup_label.visible = false
+	if popup_title:
+		popup_title.position = Vector2(40, 18)
+		popup_title.size = Vector2(size.x - 80, 34)
 	if popup_button:
-		popup_button.position = Vector2(get_window_content_size().x / 2 - 105, 410)
+		popup_button.position = Vector2(size.x / 2 - 105, 462)
 
-	var size = get_window_content_size()
-	var level_names = ["Level 1: Souhlas s podmínkami", "Level 2: Nastavení soukromí", "Level 3: Ověření identity", "Level 4: Žádost o smazání dat", "Level 5: Finální test", "Level 6: Tahací automat", "Level 7: Pinball nesouhlasu", "Bonus Level"]
-	var start_y = 70
-	var button_height = 40
-	var button_spacing = 8
+	var level_names = ["Level 1: Souhlas s podmínkami", "Level 2: Nastavení soukromí", "Level 3: Ověření identity", "Level 4: Žádost o smazání dat", "Level 5: Finální test", "Level 6: Tahací automat", "Level 7: Pinball nesouhlasu", "Level 8: Prohozený souhlas", "Level 9: Pumpa nesouhlasu", "Level 10: Reakce", "Level 11: Odhad času", "Level 12: Odhad barvy", "Level 13: Překrytá okna", "Level 14: Fronta souhlasů", "Level 15: Neviditelný nesouhlas", "Level 16: Utíkající nesouhlas", "Level 17: Automat", "Level 18: Počet kuliček", "Level 19: Bodovací kulička", "Level 20: Terč nesouhlasu", "Level 21: Hledání slova", "Bonus Level"]
+	var start_y = 66
+	var button_width = 300
+	var button_height = 30
+	var button_spacing = 5
+	var column_spacing = 22
+	var columns = 2
 
-	for i in range(1, 9):
+	for i in range(1, 23):
+		var column = (i - 1) % columns
+		var row = floori(float(i - 1) / float(columns))
+		var total_width = button_width * columns + column_spacing
 		var level_button = Button.new()
 		level_button.name = "LevelButton" + str(i)
 		level_button.text = level_names[i - 1]
-		level_button.position = Vector2(size.x / 2 - 120, start_y + (i - 1) * (button_height + button_spacing))
-		level_button.size = Vector2(240, button_height)
+		level_button.position = Vector2(size.x / 2 - total_width / 2 + column * (button_width + column_spacing), start_y + row * (button_height + button_spacing))
+		level_button.size = Vector2(button_width, button_height)
 		style_window_button(level_button)
 
 		match i:
@@ -651,6 +661,34 @@ func show_level_select_menu():
 			7:
 				level_button.pressed.connect(start_level_7_direct)
 			8:
+				level_button.pressed.connect(start_level_8_direct)
+			9:
+				level_button.pressed.connect(start_level_9_direct)
+			10:
+				level_button.pressed.connect(start_level_10_direct)
+			11:
+				level_button.pressed.connect(start_level_11_direct)
+			12:
+				level_button.pressed.connect(start_level_12_direct)
+			13:
+				level_button.pressed.connect(start_level_13_direct)
+			14:
+				level_button.pressed.connect(start_level_14_direct)
+			15:
+				level_button.pressed.connect(start_level_15_direct)
+			16:
+				level_button.pressed.connect(start_level_16_direct)
+			17:
+				level_button.pressed.connect(start_level_17_direct)
+			18:
+				level_button.pressed.connect(start_level_18_direct)
+			19:
+				level_button.pressed.connect(start_level_19_direct)
+			20:
+				level_button.pressed.connect(start_level_20_direct)
+			21:
+				level_button.pressed.connect(start_level_21_direct)
+			22:
 				level_button.pressed.connect(start_bonus_level_direct)
 
 		content_root.add_child(level_button)
@@ -825,6 +863,62 @@ func start_level_7():
 	load_level("res://levels/Level7.tscn", "Pinball nesouhlasu", Callable(self, "_on_level_7_finished"))
 
 
+func start_level_8():
+	load_level("res://levels/Level8.tscn", "Prohozený souhlas", Callable(self, "_on_level_8_finished"))
+
+
+func start_level_9():
+	load_level("res://levels/Level9.tscn", "Pumpa nesouhlasu", Callable(self, "_on_level_9_finished"))
+
+
+func start_level_10():
+	load_level("res://levels/Level10.tscn", "Reakce", Callable(self, "_on_level_10_finished"))
+
+
+func start_level_11():
+	load_level("res://levels/Level11.tscn", "Odhad času", Callable(self, "_on_level_11_finished"))
+
+
+func start_level_12():
+	load_level("res://levels/Level12.tscn", "Odhad barvy", Callable(self, "_on_level_12_finished"))
+
+
+func start_level_13():
+	load_level("res://levels/Level13.tscn", "Překrytá okna", Callable(self, "_on_level_13_finished"))
+
+
+func start_level_14():
+	load_level("res://levels/Level14.tscn", "Fronta souhlasů", Callable(self, "_on_level_14_finished"))
+
+
+func start_level_15():
+	load_level("res://levels/Level15.tscn", "Neviditelný nesouhlas", Callable(self, "_on_level_15_finished"))
+
+
+func start_level_16():
+	load_level("res://levels/Level16.tscn", "Utíkající nesouhlas", Callable(self, "_on_level_16_finished"))
+
+
+func start_level_17():
+	load_level("res://levels/Level17.tscn", "Automat", Callable(self, "_on_level_17_finished"))
+
+
+func start_level_18():
+	load_level("res://levels/Level18.tscn", "Počet kuliček", Callable(self, "_on_level_18_finished"))
+
+
+func start_level_19():
+	load_level("res://levels/Level19.tscn", "Bodovací kulička", Callable(self, "_on_level_19_finished"))
+
+
+func start_level_20():
+	load_level("res://levels/Level20.tscn", "Terč nesouhlasu", Callable(self, "_on_level_20_finished"))
+
+
+func start_level_21():
+	load_level("res://levels/Level21.tscn", "Hledání slova", Callable(self, "_on_level_21_finished"))
+
+
 func _on_level_1_finished():
 	start_level_2()
 
@@ -875,6 +969,132 @@ func _on_level_6_finished():
 
 
 func _on_level_7_finished():
+	show_popup_window(
+		"Ještě jeden souhlas",
+		"Systém tvrdí, že poslední volba je konečně jednoduchá.",
+		"Pokračovat",
+		Callable(self, "start_level_8")
+	)
+
+
+func _on_level_8_finished():
+	show_popup_window(
+		"Dokončení čeká",
+		"Souhlas je prý možné odmítnout, ale jen pokud vydržíte.",
+		"Pokračovat",
+		Callable(self, "start_level_9")
+	)
+
+
+func _on_level_9_finished():
+	show_popup_window(
+		"Reakční test",
+		"Další obrazovka vyžaduje kliknout jen tehdy, když přes linku neprochází souhlas.",
+		"Pokračovat",
+		Callable(self, "start_level_10")
+	)
+
+
+func _on_level_10_finished():
+	show_popup_window(
+		"Časový odhad",
+		"Systém změří váš cit pro patnáct sekund.",
+		"Pokračovat",
+		Callable(self, "start_level_11")
+	)
+
+
+func _on_level_11_finished():
+	show_popup_window(
+		"Barevné ověření",
+		"Poslední kontrola chce trefit barvu dostatečně blízko.",
+		"Pokračovat",
+		Callable(self, "start_level_12")
+	)
+
+
+func _on_level_12_finished():
+	show_popup_window(
+		"Překrytá okna",
+		"Správné okno je někde pod falešnými dialogy.",
+		"Pokračovat",
+		Callable(self, "start_level_13")
+	)
+
+
+func _on_level_13_finished():
+	show_popup_window(
+		"Fronta souhlasů",
+		"Systém rozjel řadu voleb. NESOUHLASÍM se mezi nimi jen mihne.",
+		"Pokračovat",
+		Callable(self, "start_level_14")
+	)
+
+
+func _on_level_14_finished():
+	show_popup_window(
+		"Neviditelné tlačítko",
+		"Systém tlačítko schoval mimo jistotu zraku. Časem se prozradí.",
+		"Pokračovat",
+		Callable(self, "start_level_15")
+	)
+
+
+func _on_level_15_finished():
+	show_popup_window(
+		"Utíkající volba",
+		"Nesouhlas už nechce zůstat na místě.",
+		"Pokračovat",
+		Callable(self, "start_level_16")
+	)
+
+
+func _on_level_16_finished():
+	show_popup_window(
+		"Automat",
+		"Systém schoval NESOUHLASÍM do válců automatu.",
+		"Pokračovat",
+		Callable(self, "start_level_17")
+	)
+
+
+func _on_level_17_finished():
+	show_popup_window(
+		"Počet kuliček",
+		"Stačí jen spočítat pohyblivé kuličky. Velmi férové.",
+		"Pokračovat",
+		Callable(self, "start_level_18")
+	)
+
+
+func _on_level_18_finished():
+	show_popup_window(
+		"Bodovací kulička",
+		"Tlačítko se odemkne až po nasbírání bodů.",
+		"Pokračovat",
+		Callable(self, "start_level_19")
+	)
+
+
+func _on_level_19_finished():
+	show_popup_window(
+		"Terč nesouhlasu",
+		"Poslední cíl se otáčí a kurzor neposlouchá.",
+		"Pokračovat",
+		Callable(self, "start_level_20")
+	)
+
+
+func _on_level_20_finished():
+	show_popup_window(
+		"Hledání slova",
+		"Poslední formulář schoval jedno jediné NESOUHLASÍM do textu.",
+		"Pokračovat",
+		Callable(self, "start_level_21")
+	)
+
+
+func _on_level_21_finished():
 	show_final_screen()
 
 
@@ -909,6 +1129,62 @@ func start_level_6_direct():
 
 func start_level_7_direct():
 	start_level_7()
+
+
+func start_level_8_direct():
+	start_level_8()
+
+
+func start_level_9_direct():
+	start_level_9()
+
+
+func start_level_10_direct():
+	start_level_10()
+
+
+func start_level_11_direct():
+	start_level_11()
+
+
+func start_level_12_direct():
+	start_level_12()
+
+
+func start_level_13_direct():
+	start_level_13()
+
+
+func start_level_14_direct():
+	start_level_14()
+
+
+func start_level_15_direct():
+	start_level_15()
+
+
+func start_level_16_direct():
+	start_level_16()
+
+
+func start_level_17_direct():
+	start_level_17()
+
+
+func start_level_18_direct():
+	start_level_18()
+
+
+func start_level_19_direct():
+	start_level_19()
+
+
+func start_level_20_direct():
+	start_level_20()
+
+
+func start_level_21_direct():
+	start_level_21()
 
 
 func start_bonus_level_direct():
