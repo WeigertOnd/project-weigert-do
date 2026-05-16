@@ -1,0 +1,54 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/level_10.gd" id="1_nwpee"]
+
+[node name="Level10" type="Node2D"]
+script = ExtResource("1_nwpee")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_right = 856.0
+offset_bottom = 520.0
+
+[node name="Arena" type="Panel" parent="."]
+offset_left = 34.0
+offset_top = 30.0
+offset_right = 822.0
+offset_bottom = 360.0
+
+[node name="Line" type="ColorRect" parent="."]
+offset_left = 426.0
+offset_top = 98.0
+offset_right = 430.0
+offset_bottom = 412.0
+color = Color(0.42, 0.38, 0.32, 1)
+
+[node name="TargetLabel" type="Button" parent="."]
+offset_left = 350.0
+offset_top = 60.0
+offset_right = 506.0
+offset_bottom = 98.0
+text = "Nesouhlasím"
+
+[node name="NoButton" type="Button" parent="."]
+offset_left = 318.0
+offset_top = 428.0
+offset_right = 538.0
+offset_bottom = 492.0
+text = "Nesouhlasím"
+
+[node name="ScoreLabel" type="Label" parent="."]
+offset_left = 60.0
+offset_top = 434.0
+offset_right = 280.0
+offset_bottom = 464.0
+text = "Reakce: 0/4"
+
+[node name="ErrorLabel" type="Label" parent="."]
+visible = false
+offset_left = 248.0
+offset_top = 378.0
+offset_right = 608.0
+offset_bottom = 412.0
+text = "CHYBA"
+horizontal_alignment = 1
+vertical_alignment = 1
