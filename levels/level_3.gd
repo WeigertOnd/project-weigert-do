@@ -286,7 +286,7 @@ func _on_agree_pressed():
 	step += 1
 
 	if step == 1:
-		GameState.add_system_control(5)
+		GameState.reduce_system_control(2)
 		update_system_control_label()
 
 		text_label.modulate = Color(0.10, 0.10, 0.10)
@@ -297,7 +297,7 @@ func _on_agree_pressed():
 		start_glitch()
 
 	elif step == 2:
-		GameState.add_system_control(5)
+		GameState.reduce_system_control(2)
 		update_system_control_label()
 
 		set_text("Výsledek analýzy:\n\nČlověk může nesouhlasit pouze po dokončení další kontroly.")
@@ -305,7 +305,7 @@ func _on_agree_pressed():
 		start_glitch()
 
 	elif step == 3:
-		GameState.add_system_control(10)
+		GameState.reduce_system_control(2)
 		update_system_control_label()
 
 		text_label.modulate = Color(0.50, 0.0, 0.0)
@@ -327,7 +327,7 @@ func _on_agree_pressed():
 		start_glitch()
 
 	elif step == 5:
-		GameState.add_system_control(15)
+		GameState.reduce_system_control(2)
 		update_system_control_label()
 
 		buttons_swapping = false

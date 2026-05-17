@@ -7,7 +7,7 @@ var system_control = 0
 var max_system_control = 100
 var maxed_already_triggered = false
 var highest_unlocked_level = 1
-var max_selectable_level = 22
+var max_selectable_level = 21
 
 
 func reset_system_control():

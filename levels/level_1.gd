@@ -332,7 +332,7 @@ func _on_no_pressed():
 		start_glitch()
 
 	elif no_attempts == 3:
-		GameState.add_system_control(10)
+		GameState.reduce_system_control(5)
 		update_system_control_label()
 
 		no_button_running = false

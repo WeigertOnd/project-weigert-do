@@ -286,6 +286,11 @@ func _on_agree_pressed():
 		step = 1
 		start_final_choice()
 
+	elif step == 1:
+		GameState.reduce_system_control(2)
+		update_system_control_label()
+		start_final_choice()
+
 	elif step == 2:
 		GameState.reduce_system_control(10)
 		update_system_control_label()
@@ -296,8 +301,9 @@ func _on_no_pressed():
 	if buttons_locked or typing:
 		return
 
-	GameState.add_system_control(10)
+	GameState.reduce_system_control(5)
 	update_system_control_label()
+	step = 1
 
 	text_label.modulate = Color(0.50, 0.0, 0.0)
 	set_text("Přímé NESOUHLASÍM není v této fázi dostupné.\n\nNajděte ho ručně mezi možnostmi.")

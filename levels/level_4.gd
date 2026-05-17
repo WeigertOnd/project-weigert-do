@@ -361,7 +361,7 @@ func handle_delete_button():
 	confirm_clicks += 1
 
 	if confirm_clicks == 1:
-		GameState.add_system_control(5)
+		GameState.reduce_system_control(2)
 		update_system_control_label()
 
 		text_label.modulate = Color(0.10, 0.10, 0.10)
@@ -373,7 +373,7 @@ func handle_delete_button():
 		start_glitch()
 
 	elif confirm_clicks == 2:
-		GameState.add_system_control(10)
+		GameState.reduce_system_control(2)
 		update_system_control_label()
 
 		text_label.modulate = Color(0.50, 0.0, 0.0)
@@ -384,7 +384,7 @@ func handle_delete_button():
 		start_glitch()
 
 	elif confirm_clicks == 3:
-		GameState.add_system_control(15)
+		GameState.reduce_system_control(2)
 		update_system_control_label()
 
 		agree_button.visible = false
@@ -443,7 +443,7 @@ func handle_delete_animation(delta):
 func show_backup_trick():
 	backup_count += 1
 
-	GameState.add_system_control(15)
+	GameState.reduce_system_control(2)
 	update_system_control_label()
 
 	background.color = Color(0.95, 0.82, 0.82)

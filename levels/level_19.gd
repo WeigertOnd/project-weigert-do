@@ -245,6 +245,8 @@ func simulate_ball(delta):
 		if score >= target_score:
 			unlock_no_button()
 		else:
+			GameState.add_system_control(3)
+			update_system_control_label()
 			result_label.modulate = Color(0.45, 0.32, 0.0)
 			result_label.text = "Ještě málo bodů. Střílej znovu."
 			result_label.visible = true

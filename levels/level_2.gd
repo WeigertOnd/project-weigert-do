@@ -347,7 +347,7 @@ func _on_no_pressed():
 		start_auto_privacy_change()
 
 	elif deny_attempts == 2:
-		GameState.add_system_control(10)
+		GameState.reduce_system_control(5)
 		update_system_control_label()
 
 		text_label.modulate = Color(0.50, 0.0, 0.0)
@@ -438,9 +438,6 @@ func handle_auto_change(delta):
 		start_glitch()
 
 	elif auto_change_step == 4:
-		GameState.add_system_control(10)
-		update_system_control_label()
-
 		text_label.modulate = Color(0.55, 0.0, 0.0)
 		text_label.text = "CHYBA SYNCHRONIZACE\n\nNESOUHLASÍM není kompatibilní s doporučeným nastavením."
 		start_glitch()
@@ -450,9 +447,6 @@ func handle_auto_change(delta):
 		start_glitch()
 
 	elif auto_change_step == 6:
-		GameState.add_system_control(10)
-		update_system_control_label()
-
 		text_label.modulate = Color(0.10, 0.10, 0.10)
 		text_label.text = "NASTAVENÍ SOUKROMÍ\n\nTlačítko NESOUHLASÍM: ODEBRÁNO\nSledování: ZAPNUTO\nMikrofon: ZAPNUTO\nKamera: ZAPNUTO"
 		start_glitch()

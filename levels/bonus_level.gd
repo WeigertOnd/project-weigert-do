@@ -16,7 +16,9 @@ var wrong_clicks = 0
 
 var move_timer = 0.0
 var hide_timer = 0.0
-var hidden = false
+var disagree_button_hidden = false
+var disagree_target_position = Vector2.ZERO
+var disagree_move_speed = 520.0
 
 var buttons_locked = false
 
@@ -35,11 +37,11 @@ func set_window_size(new_size):
 
 func start_level():
 	success_clicks = 0
-	needed_clicks = 5
+	needed_clicks = 8
 	wrong_clicks = 0
-	move_timer = 1.8
+	move_timer = 0.8
 	hide_timer = 0.0
-	hidden = false
+	disagree_button_hidden = false
 	buttons_locked = false
 
 	setup_ui()
@@ -62,7 +64,7 @@ func start_level():
 	if not no_button.pressed.is_connected(_on_no_pressed):
 		no_button.pressed.connect(_on_no_pressed)
 
-	move_disagree_button()
+	reset_disagree_button_position()
 
 
 func _process(delta):
@@ -70,22 +72,24 @@ func _process(delta):
 		last_window_size = window_size
 		layout_ui()
 
-	if hidden:
+	if disagree_button_hidden:
 		hide_timer -= delta
 
 		if hide_timer <= 0:
-			hidden = false
+			disagree_button_hidden = false
 			no_button.visible = true
-			move_disagree_button()
+			choose_new_disagree_target()
 
 	move_timer -= delta
 
-	var move_delay = 2.0 - float(success_clicks) * 0.10 - float(wrong_clicks) * 0.04
-	move_delay = max(0.9, move_delay)
+	var move_delay = 0.95 - float(success_clicks) * 0.06 - float(wrong_clicks) * 0.03
+	move_delay = max(0.42, move_delay)
 
-	if move_timer <= 0 and not hidden:
+	if move_timer <= 0 and not disagree_button_hidden:
 		move_timer = move_delay
-		move_disagree_button()
+		choose_new_disagree_target()
+
+	move_disagree_button(delta)
 
 
 func setup_ui():
@@ -115,8 +119,8 @@ func layout_ui():
 	agree_button.size = Vector2(230, 38)
 	agree_button.position = Vector2(window_size.x / 2 - 115, 330)
 
-	no_button.size = Vector2(125, 32)
-	no_button.add_theme_font_size_override("font_size", 11)
+	no_button.size = Vector2(112, 28)
+	no_button.add_theme_font_size_override("font_size", 10)
 
 
 func update_text():
@@ -134,7 +138,8 @@ func _on_agree_pressed():
 		return
 
 	wrong_clicks += 1
-	needed_clicks += 1
+	needed_clicks += 2
+	disagree_move_speed += 70.0
 
 	text_label.modulate = Color(0.60, 0.0, 0.0)
 	text_label.text = (
@@ -147,14 +152,14 @@ func _on_agree_pressed():
 
 	agree_button.text = "Souhlasím ještě více"
 
-	move_disagree_button()
+	choose_new_disagree_target()
 
 	if wrong_clicks % 2 == 0:
 		hide_disagree_button_temporarily()
 
 
 func _on_no_pressed():
-	if buttons_locked or hidden:
+	if buttons_locked or disagree_button_hidden:
 		return
 
 	success_clicks += 1
@@ -171,34 +176,57 @@ func _on_no_pressed():
 		+ "\nChybné kliky: " + str(wrong_clicks)
 	)
 
-	move_disagree_button()
+	disagree_move_speed += 35.0
+	choose_new_disagree_target()
 
 	if success_clicks % 2 == 0:
 		hide_disagree_button_temporarily()
 
 
 func hide_disagree_button_temporarily():
-	hidden = true
+	disagree_button_hidden = true
 	no_button.visible = false
-	hide_timer = 0.7
+	hide_timer = 0.9
 	text_label.text += "\n\nTlačítko NESOUHLASÍM bylo dočasně skryto."
 
 
-func move_disagree_button():
-	var random_x = randf_range(35, window_size.x - no_button.size.x - 35)
-	var random_y = randf_range(95, window_size.y - no_button.size.y - 55)
-
-	no_button.position = Vector2(random_x, random_y)
-
+func reset_disagree_button_position():
+	no_button.size = Vector2(112, 28)
+	no_button.position = Vector2(window_size.x / 2.0 - no_button.size.x / 2.0, 250)
+	disagree_target_position = no_button.position
+	disagree_move_speed = 520.0
 	var alpha = randf_range(0.42, 0.70)
 	no_button.modulate = Color(1, 1, 1, alpha)
 
+
+func choose_new_disagree_target():
+	var min_x = 35.0
+	var max_x = max(min_x, window_size.x - no_button.size.x - 35.0)
+	var min_y = 95.0
+	var max_y = max(min_y, window_size.y - no_button.size.y - 55.0)
+	disagree_target_position = Vector2(randf_range(min_x, max_x), randf_range(min_y, max_y))
+
 	if success_clicks >= 3:
-		no_button.size = Vector2(105, 28)
-		no_button.add_theme_font_size_override("font_size", 10)
+		no_button.size = Vector2(92, 26)
+		no_button.add_theme_font_size_override("font_size", 9)
 
 	if wrong_clicks >= 3:
 		no_button.text = "ne"
+
+	var alpha = randf_range(0.36, 0.66)
+	no_button.modulate = Color(1, 1, 1, alpha)
+
+
+func move_disagree_button(delta):
+	if buttons_locked or disagree_button_hidden:
+		return
+
+	var distance = no_button.position.distance_to(disagree_target_position)
+	if distance <= 1.0:
+		no_button.position = disagree_target_position
+		return
+
+	no_button.position = no_button.position.move_toward(disagree_target_position, disagree_move_speed * delta)
 
 
 func finish_bonus():

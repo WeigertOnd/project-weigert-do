@@ -46,6 +46,7 @@ var monitor_bar_fill
 var monitor_percent_label
 
 var clock_timer = 0.0
+var bonus_level_launch_pending = false
 
 
 func _ready():
@@ -673,7 +674,7 @@ func show_level_select_menu(show_all_levels: bool = false):
 	if popup_button:
 		popup_button.position = Vector2(size.x / 2 - 105, 462)
 
-	var level_names = ["Level 1: Souhlas s podmínkami", "Level 2: Nastavení soukromí", "Level 3: Ověření identity", "Level 4: Žádost o smazání dat", "Level 5: Finální test", "Level 6: Tahací automat", "Level 7: Pinball nesouhlasu", "Level 8: Prohozený souhlas", "Level 9: Pumpa nesouhlasu", "Level 10: Reakce", "Level 11: Odhad času", "Level 12: Odhad barvy", "Level 13: Překrytá okna", "Level 14: Fronta souhlasů", "Level 15: Neviditelný nesouhlas", "Level 16: Utíkající nesouhlas", "Level 17: Automat", "Level 18: Počet kuliček", "Level 19: Bodovací kulička", "Level 20: Terč nesouhlasu", "Level 21: Hledání slova", "Bonus Level"]
+	var level_names = ["Level 1: Souhlas s podmínkami", "Level 2: Nastavení soukromí", "Level 3: Ověření identity", "Level 4: Žádost o smazání dat", "Level 5: Finální test", "Level 6: Tahací automat", "Level 7: Pinball nesouhlasu", "Level 8: Prohozený souhlas", "Level 9: Pumpa nesouhlasu", "Level 10: Reakce", "Level 11: Odhad času", "Level 12: Odhad barvy", "Level 13: Překrytá okna", "Level 14: Fronta souhlasů", "Level 15: Neviditelný nesouhlas", "Level 16: Utíkající nesouhlas", "Level 17: Automat", "Level 18: Počet kuliček", "Level 19: Bodovací kulička", "Level 20: Terč nesouhlasu", "Level 21: Hledání slova"]
 	var start_y = 66
 	var button_width = 300
 	var button_height = 30
@@ -681,7 +682,7 @@ func show_level_select_menu(show_all_levels: bool = false):
 	var column_spacing = 22
 	var columns = 2
 
-	for i in range(1, 23):
+	for i in range(1, 22):
 		var column = (i - 1) % columns
 		var row = floori(float(i - 1) / float(columns))
 		var total_width = button_width * columns + column_spacing
@@ -1022,7 +1023,7 @@ func _on_level_21_finished():
 # =========================================================
 
 func start_selected_level(level_number: int):
-	if level_number < 1 or level_number > 22:
+	if level_number < 1 or level_number > 21:
 		return
 
 	match level_number:
@@ -1069,8 +1070,6 @@ func start_selected_level(level_number: int):
 			start_level_20()
 		21:
 			start_level_21()
-		22:
-			start_bonus_level_direct()
 
 
 func start_level_1_direct():
@@ -1159,6 +1158,7 @@ func start_level_21_direct():
 
 
 func start_bonus_level_direct():
+	bonus_level_launch_pending = false
 	if ResourceLoader.exists("res://levels/BonusLevel.tscn"):
 		load_level("res://levels/BonusLevel.tscn", "Korekční protokol", Callable(self, "_on_bonus_level_finished"))
 	else:
@@ -1175,6 +1175,15 @@ func start_bonus_level_direct():
 # =========================================================
 
 func _on_system_control_maxed():
+	if bonus_level_launch_pending:
+		return
+
+	bonus_level_launch_pending = true
+	call_deferred("_start_bonus_level_from_system_control")
+
+
+func _start_bonus_level_from_system_control():
+	bonus_level_launch_pending = false
 	start_menu.visible = false
 
 	if ResourceLoader.exists("res://levels/BonusLevel.tscn"):
