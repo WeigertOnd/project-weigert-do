@@ -7,6 +7,8 @@ var current_level_finished_function = Callable()
 # permanent desktop
 var desktop_background
 var desktop_overlay
+var desktop_game_icon
+var desktop_game_label
 var taskbar
 var start_button
 var clock_label
@@ -112,6 +114,57 @@ func build_desktop():
 	desktop_overlay.z_index = -49
 	add_child(desktop_overlay)
 
+	desktop_game_icon = TextureButton.new()
+	desktop_game_icon.name = "DesktopGameIcon"
+	var icon_path = "res://assets/app_icon.png"
+	if not ResourceLoader.exists(icon_path):
+		icon_path = "res://assets/app_icon.svg"
+	if not ResourceLoader.exists(icon_path):
+		icon_path = "res://assets/app_icon.jpg"
+	var icon_texture = null
+	if ResourceLoader.exists(icon_path):
+		icon_texture = load(icon_path)
+	else:
+		icon_texture = load("res://icon.svg")
+
+	var icon_texture_small = icon_texture
+	if icon_texture != null and icon_texture.has_method("get_image"):
+		var icon_image = icon_texture.get_image()
+		if icon_image != null:
+			icon_image.resize(60, 60, Image.INTERPOLATE_LANCZOS)
+			icon_texture_small = ImageTexture.create_from_image(icon_image)
+
+	desktop_game_icon.texture_normal = icon_texture_small
+	desktop_game_icon.texture_pressed = icon_texture_small
+	desktop_game_icon.texture_hover = icon_texture_small
+	desktop_game_icon.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	desktop_game_icon.clip_contents = true
+	desktop_game_icon.tooltip_text = "Klikni pro spuštění hry"
+
+	var empty_style = StyleBoxFlat.new()
+	empty_style.bg_color = Color(0, 0, 0, 0)
+	empty_style.border_width_left = 0
+	empty_style.border_width_top = 0
+	empty_style.border_width_right = 0
+	empty_style.border_width_bottom = 0
+	desktop_game_icon.add_theme_stylebox_override("normal", empty_style)
+	desktop_game_icon.add_theme_stylebox_override("hover", empty_style)
+	desktop_game_icon.add_theme_stylebox_override("pressed", empty_style)
+	desktop_game_icon.add_theme_stylebox_override("focused", empty_style)
+	desktop_game_icon.add_theme_color_override("font_color", Color(0, 0, 0, 0))
+	desktop_game_icon.pressed.connect(start_new_game)
+	desktop_game_icon.size = Vector2(60, 60)
+	add_child(desktop_game_icon)
+
+	desktop_game_label = Label.new()
+	desktop_game_label.name = "DesktopGameLabel"
+	desktop_game_label.text = "I agreee"
+	desktop_game_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desktop_game_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	desktop_game_label.add_theme_font_size_override("font_size", 12)
+	desktop_game_label.modulate = Color(1, 1, 1)
+	add_child(desktop_game_label)
+
 	taskbar = Panel.new()
 	taskbar.name = "Taskbar"
 	taskbar.z_index = 50
@@ -162,7 +215,7 @@ func build_desktop():
 	menu_level_select_button.name = "MenuLevelSelectButton"
 	menu_level_select_button.text = "Vybrat level"
 	style_menu_button(menu_level_select_button)
-	menu_level_select_button.pressed.connect(show_level_select_menu)
+	menu_level_select_button.pressed.connect(Callable(self, "show_level_select_menu").bind(true))
 	start_menu.add_child(menu_level_select_button)
 
 	menu_continue_button = Button.new()
@@ -251,6 +304,14 @@ func layout_desktop():
 	if taskbar:
 		taskbar.position = Vector2(0, screen.y - 42)
 		taskbar.size = Vector2(screen.x, 42)
+
+	if desktop_game_icon:
+		desktop_game_icon.position = Vector2(24, 24)
+		desktop_game_icon.size = Vector2(60, 60)
+
+	if desktop_game_label:
+		desktop_game_label.position = Vector2(24, 24 + 60 + 6)
+		desktop_game_label.size = Vector2(60, 18)
 
 	if start_button:
 		start_button.position = Vector2(8, screen.y - 36)
@@ -431,17 +492,6 @@ func build_system_monitor():
 	monitor_content.add_theme_stylebox_override("panel", make_monitor_content_style())
 	add_child(monitor_content)
 
-	monitor_label = Label.new()
-	monitor_label.name = "SystemMonitorLabel"
-	monitor_label.visible = false
-	monitor_label.text = "KONTROLA SYSTÉMU"
-	monitor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	monitor_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	monitor_label.add_theme_font_size_override("font_size", 13)
-	monitor_label.modulate = Color(0.10, 0.10, 0.10)
-	monitor_label.z_index = 24
-	add_child(monitor_label)
-
 	monitor_bar_background = Panel.new()
 	monitor_bar_background.name = "SystemMonitorBarBackground"
 	monitor_bar_background.visible = false
@@ -517,10 +567,6 @@ func layout_system_monitor():
 	if monitor_content:
 		monitor_content.position = pos + Vector2(8, 40)
 		monitor_content.size = Vector2(size.x - 16, size.y - 50)
-
-	if monitor_label:
-		monitor_label.position = pos + Vector2(16, 51)
-		monitor_label.size = Vector2(size.x - 32, 22)
 
 	if monitor_bar_background:
 		monitor_bar_background.position = pos + Vector2(22, 84)
@@ -604,10 +650,11 @@ func _on_start_pressed():
 func start_new_game():
 	start_menu.visible = false
 	GameState.reset_system_control()
-	start_level_1()
+	GameState.reset_level_progress()
+	show_level_select_menu()
 
 
-func show_level_select_menu():
+func show_level_select_menu(show_all_levels: bool = false):
 	start_menu.visible = false
 	show_popup_window(
 		"Vybrat level",
@@ -644,52 +691,15 @@ func show_level_select_menu():
 		level_button.position = Vector2(size.x / 2 - total_width / 2 + column * (button_width + column_spacing), start_y + row * (button_height + button_spacing))
 		level_button.size = Vector2(button_width, button_height)
 		style_window_button(level_button)
-
-		match i:
-			1:
-				level_button.pressed.connect(start_level_1_direct)
-			2:
-				level_button.pressed.connect(start_level_2_direct)
-			3:
-				level_button.pressed.connect(start_level_3_direct)
-			4:
-				level_button.pressed.connect(start_level_4_direct)
-			5:
-				level_button.pressed.connect(start_level_5_direct)
-			6:
-				level_button.pressed.connect(start_level_6_direct)
-			7:
-				level_button.pressed.connect(start_level_7_direct)
-			8:
-				level_button.pressed.connect(start_level_8_direct)
-			9:
-				level_button.pressed.connect(start_level_9_direct)
-			10:
-				level_button.pressed.connect(start_level_10_direct)
-			11:
-				level_button.pressed.connect(start_level_11_direct)
-			12:
-				level_button.pressed.connect(start_level_12_direct)
-			13:
-				level_button.pressed.connect(start_level_13_direct)
-			14:
-				level_button.pressed.connect(start_level_14_direct)
-			15:
-				level_button.pressed.connect(start_level_15_direct)
-			16:
-				level_button.pressed.connect(start_level_16_direct)
-			17:
-				level_button.pressed.connect(start_level_17_direct)
-			18:
-				level_button.pressed.connect(start_level_18_direct)
-			19:
-				level_button.pressed.connect(start_level_19_direct)
-			20:
-				level_button.pressed.connect(start_level_20_direct)
-			21:
-				level_button.pressed.connect(start_level_21_direct)
-			22:
-				level_button.pressed.connect(start_bonus_level_direct)
+		if show_all_levels:
+			level_button.pressed.connect(Callable(self, "start_selected_level").bind(i))
+		else:
+			level_button.disabled = not GameState.is_level_unlocked(i)
+			if level_button.disabled:
+				level_button.text += " (zamceno)"
+				level_button.modulate = Color(0.65, 0.65, 0.65)
+			else:
+				level_button.pressed.connect(Callable(self, "start_selected_level").bind(i))
 
 		content_root.add_child(level_button)
 
@@ -919,188 +929,149 @@ func start_level_21():
 	load_level("res://levels/Level21.tscn", "Hledání slova", Callable(self, "_on_level_21_finished"))
 
 
+func finish_level_and_return_to_select(completed_level: int):
+	GameState.unlock_next_level(completed_level)
+	show_level_select_menu()
+
+
 func _on_level_1_finished():
-	start_level_2()
+	finish_level_and_return_to_select(1)
 
 
 func _on_level_2_finished():
-	show_popup_window(
-		"Ověření vyžadováno",
-		"Systém tvrdí, že před skutečným nesouhlasem musíte projít kontrolou identity.",
-		"Pokračovat",
-		Callable(self, "start_level_3")
-	)
+	finish_level_and_return_to_select(2)
 
 
 func _on_level_3_finished():
-	show_popup_window(
-		"Přístup udělen",
-		"Identita byla ověřena.\nNyní údajně můžete požádat o smazání dat.",
-		"Otevřít správu dat",
-		Callable(self, "start_level_4")
-	)
+	finish_level_and_return_to_select(3)
 
 
 func _on_level_4_finished():
-	show_popup_window(
-		"Poslední krok",
-		"Systém našel finální test.\nPrý už v něm bude skutečné NESOUHLASÍM.",
-		"Spustit finální test",
-		Callable(self, "start_level_5")
-	)
+	finish_level_and_return_to_select(4)
 
 
 func _on_level_5_finished():
-	show_popup_window(
-		"Level zvládnut",
-		"Záhadný systém aktivuje poslední zkoušku.",
-		"Pokračovat",
-		Callable(self, "start_level_6")
-	)
+	finish_level_and_return_to_select(5)
 
 
 func _on_level_6_finished():
-	show_popup_window(
-		"Poslední zámek",
-		"Systém schoval NESOUHLASÍM za skóre v pinballu.",
-		"Spustit pinball",
-		Callable(self, "start_level_7")
-	)
+	finish_level_and_return_to_select(6)
 
 
 func _on_level_7_finished():
-	show_popup_window(
-		"Ještě jeden souhlas",
-		"Systém tvrdí, že poslední volba je konečně jednoduchá.",
-		"Pokračovat",
-		Callable(self, "start_level_8")
-	)
+	finish_level_and_return_to_select(7)
 
 
 func _on_level_8_finished():
-	show_popup_window(
-		"Dokončení čeká",
-		"Souhlas je prý možné odmítnout, ale jen pokud vydržíte.",
-		"Pokračovat",
-		Callable(self, "start_level_9")
-	)
+	finish_level_and_return_to_select(8)
 
 
 func _on_level_9_finished():
-	show_popup_window(
-		"Reakční test",
-		"Další obrazovka vyžaduje kliknout jen tehdy, když přes linku neprochází souhlas.",
-		"Pokračovat",
-		Callable(self, "start_level_10")
-	)
+	finish_level_and_return_to_select(9)
 
 
 func _on_level_10_finished():
-	show_popup_window(
-		"Časový odhad",
-		"Systém změří váš cit pro patnáct sekund.",
-		"Pokračovat",
-		Callable(self, "start_level_11")
-	)
+	finish_level_and_return_to_select(10)
 
 
 func _on_level_11_finished():
-	show_popup_window(
-		"Barevné ověření",
-		"Poslední kontrola chce trefit barvu dostatečně blízko.",
-		"Pokračovat",
-		Callable(self, "start_level_12")
-	)
+	finish_level_and_return_to_select(11)
 
 
 func _on_level_12_finished():
-	show_popup_window(
-		"Překrytá okna",
-		"Správné okno je někde pod falešnými dialogy.",
-		"Pokračovat",
-		Callable(self, "start_level_13")
-	)
+	finish_level_and_return_to_select(12)
 
 
 func _on_level_13_finished():
-	show_popup_window(
-		"Fronta souhlasů",
-		"Systém rozjel řadu voleb. NESOUHLASÍM se mezi nimi jen mihne.",
-		"Pokračovat",
-		Callable(self, "start_level_14")
-	)
+	finish_level_and_return_to_select(13)
 
 
 func _on_level_14_finished():
-	show_popup_window(
-		"Neviditelné tlačítko",
-		"Systém tlačítko schoval mimo jistotu zraku. Časem se prozradí.",
-		"Pokračovat",
-		Callable(self, "start_level_15")
-	)
+	finish_level_and_return_to_select(14)
 
 
 func _on_level_15_finished():
-	show_popup_window(
-		"Utíkající volba",
-		"Nesouhlas už nechce zůstat na místě.",
-		"Pokračovat",
-		Callable(self, "start_level_16")
-	)
+	finish_level_and_return_to_select(15)
 
 
 func _on_level_16_finished():
-	show_popup_window(
-		"Automat",
-		"Systém schoval NESOUHLASÍM do válců automatu.",
-		"Pokračovat",
-		Callable(self, "start_level_17")
-	)
+	finish_level_and_return_to_select(16)
 
 
 func _on_level_17_finished():
-	show_popup_window(
-		"Počet kuliček",
-		"Stačí jen spočítat pohyblivé kuličky. Velmi férové.",
-		"Pokračovat",
-		Callable(self, "start_level_18")
-	)
+	finish_level_and_return_to_select(17)
 
 
 func _on_level_18_finished():
-	show_popup_window(
-		"Bodovací kulička",
-		"Tlačítko se odemkne až po nasbírání bodů.",
-		"Pokračovat",
-		Callable(self, "start_level_19")
-	)
+	finish_level_and_return_to_select(18)
 
 
 func _on_level_19_finished():
-	show_popup_window(
-		"Terč nesouhlasu",
-		"Poslední cíl se otáčí a kurzor neposlouchá.",
-		"Pokračovat",
-		Callable(self, "start_level_20")
-	)
+	finish_level_and_return_to_select(19)
 
 
 func _on_level_20_finished():
-	show_popup_window(
-		"Hledání slova",
-		"Poslední formulář schoval jedno jediné NESOUHLASÍM do textu.",
-		"Pokračovat",
-		Callable(self, "start_level_21")
-	)
+	finish_level_and_return_to_select(20)
 
 
 func _on_level_21_finished():
-	show_final_screen()
-
+	finish_level_and_return_to_select(21)
 
 # =========================================================
 # DIRECT LEVEL START (for level select menu)
 # =========================================================
+
+func start_selected_level(level_number: int):
+	if level_number < 1 or level_number > 22:
+		return
+
+	match level_number:
+		1:
+			GameState.reset_system_control()
+			start_level_1()
+		2:
+			start_level_2()
+		3:
+			start_level_3()
+		4:
+			start_level_4()
+		5:
+			start_level_5()
+		6:
+			start_level_6()
+		7:
+			start_level_7()
+		8:
+			start_level_8()
+		9:
+			start_level_9()
+		10:
+			start_level_10()
+		11:
+			start_level_11()
+		12:
+			start_level_12()
+		13:
+			start_level_13()
+		14:
+			start_level_14()
+		15:
+			start_level_15()
+		16:
+			start_level_16()
+		17:
+			start_level_17()
+		18:
+			start_level_18()
+		19:
+			start_level_19()
+		20:
+			start_level_20()
+		21:
+			start_level_21()
+		22:
+			start_bonus_level_direct()
+
 
 func start_level_1_direct():
 	GameState.reset_system_control()
@@ -1445,7 +1416,7 @@ func style_menu_button(btn: Button):
 	btn.add_theme_font_size_override("font_size", 14)
 
 
-func style_window_button(btn: Button):
+func style_window_button(btn):
 	var normal = make_soft_button_style(Color(0.94, 0.94, 0.91), Color(0.46, 0.50, 0.58), 4)
 	var hover = make_soft_button_style(Color(0.98, 0.99, 1.0), Color(0.20, 0.44, 0.86), 4)
 	var pressed = make_soft_button_style(Color(0.78, 0.86, 0.98), Color(0.16, 0.33, 0.68), 4)
