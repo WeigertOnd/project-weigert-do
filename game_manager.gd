@@ -145,19 +145,25 @@ func build_desktop():
 	desktop_game_icon = TextureButton.new()
 	desktop_game_icon.name = "DesktopGameIcon"
 	var icon_path = "res://assets/app_icon.png"
+
 	if not ResourceLoader.exists(icon_path):
 		icon_path = "res://assets/app_icon.svg"
+
 	if not ResourceLoader.exists(icon_path):
 		icon_path = "res://assets/app_icon.jpg"
+
 	var icon_texture = null
+
 	if ResourceLoader.exists(icon_path):
 		icon_texture = load(icon_path)
 	else:
 		icon_texture = load("res://icon.svg")
 
 	var icon_texture_small = icon_texture
+
 	if icon_texture != null and icon_texture.has_method("get_image"):
 		var icon_image = icon_texture.get_image()
+
 		if icon_image != null:
 			icon_image.resize(60, 60, Image.INTERPOLATE_LANCZOS)
 			icon_texture_small = ImageTexture.create_from_image(icon_image)
@@ -175,6 +181,7 @@ func build_desktop():
 	empty_style.border_width_top = 0
 	empty_style.border_width_right = 0
 	empty_style.border_width_bottom = 0
+
 	desktop_game_icon.add_theme_stylebox_override("normal", empty_style)
 	desktop_game_icon.add_theme_stylebox_override("hover", empty_style)
 	desktop_game_icon.add_theme_stylebox_override("pressed", empty_style)
@@ -372,6 +379,7 @@ func layout_desktop():
 			menu_shutdown_button.size = Vector2(214, 40)
 
 	layout_game_window()
+
 
 func layout_game_window():
 	var screen = get_viewport_rect().size
@@ -668,8 +676,8 @@ func start_new_game():
 	reset_tos_game_progress()
 	show_tos_articles_screen()
 
+
 func reset_tos_game_progress():
-	GameState.reset_level_progress()
 	highest_unlocked_article = 1
 	current_article_number = 1
 	used_random_levels.clear()
@@ -690,9 +698,11 @@ func show_level_select_menu(show_all_levels: bool = false):
 
 	if popup_label:
 		popup_label.visible = false
+
 	if popup_title:
 		popup_title.position = Vector2(40, 18)
 		popup_title.size = Vector2(size.x - 80, 34)
+
 	if popup_button:
 		popup_button.position = Vector2(size.x / 2 - 105, 462)
 
@@ -713,10 +723,12 @@ func show_level_select_menu(show_all_levels: bool = false):
 		level_button.position = Vector2(size.x / 2 - total_width / 2 + column * (button_width + column_spacing), start_y + row * (button_height + button_spacing))
 		level_button.size = Vector2(button_width, button_height)
 		style_window_button(level_button)
+
 		if show_all_levels:
 			level_button.pressed.connect(Callable(self, "start_selected_level_for_testing").bind(i))
 		else:
 			level_button.disabled = not GameState.is_level_unlocked(i)
+
 			if level_button.disabled:
 				level_button.text += " (zamceno)"
 				level_button.modulate = Color(0.65, 0.65, 0.65)
@@ -917,9 +929,11 @@ func fail_tos_game():
 		Callable(self, "_on_fail_restart_pressed")
 	)
 
+
 func _on_fail_restart_pressed():
 	reset_tos_game_progress()
 	show_tos_articles_screen()
+
 
 func finish_level_and_return_to_select(_completed_level: int):
 	if testing_level_mode:
@@ -939,6 +953,7 @@ func finish_level_and_return_to_select(_completed_level: int):
 
 	show_tos_articles_screen()
 
+
 # =========================================================
 # DIRECT LEVEL START (for level select menu)
 # =========================================================
@@ -947,6 +962,7 @@ func start_selected_level_for_testing(level_number: int):
 	testing_level_mode = true
 	current_article_number = 1
 	start_selected_level(level_number)
+
 
 func start_selected_level(level_number: int):
 	if level_number < 1 or level_number > get_level_count():
@@ -1125,6 +1141,7 @@ func style_window_button(btn):
 	btn.add_theme_color_override("font_hover_color", Color(0.03, 0.03, 0.03))
 	btn.add_theme_color_override("font_pressed_color", Color(0.02, 0.02, 0.02))
 	btn.add_theme_font_size_override("font_size", 14)
+
 
 func style_completed_button(btn: Button):
 	var normal = make_soft_button_style(Color(0.24, 0.68, 0.28), Color(0.10, 0.42, 0.14), 4)

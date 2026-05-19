@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -79,7 +79,7 @@ func start_level():
 
 	article_label.visible = true
 	article_label.modulate = Color(0.10, 0.10, 0.10)
-	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	article_label.text = LevelUtils.get_article_text(article_number)
 
 	instruction_label.visible = true
 	instruction_label.modulate = Color(0.15, 0.15, 0.15)
@@ -92,8 +92,8 @@ func start_level():
 	no_button.text = "Nesouhlasím"
 	yes_button.text = "Souhlasím"
 
-	style_red_button(no_button)
-	style_green_button(yes_button)
+	LevelUtils.style_red_button(no_button)
+	LevelUtils.style_green_button(yes_button)
 
 	no_button.position = clamp_button_position(no_positions[0])
 	yes_button.position = clamp_button_position(yes_positions[0])
@@ -111,11 +111,10 @@ func _process(_delta):
 
 
 func setup_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 	background.z_index = -10
 
-	if article_label == null or not is_instance_valid(article_label):
+	if not LevelUtils.is_valid_node(article_label):
 		article_label = Label.new()
 		article_label.name = "ArticleLabel"
 		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -126,7 +125,7 @@ func setup_ui():
 		article_label.z_index = 5
 		add_child(article_label)
 
-	if instruction_label == null or not is_instance_valid(instruction_label):
+	if not LevelUtils.is_valid_node(instruction_label):
 		instruction_label = Label.new()
 		instruction_label.name = "InstructionLabel"
 		instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -137,7 +136,7 @@ func setup_ui():
 		instruction_label.z_index = 20
 		add_child(instruction_label)
 
-	if result_label == null or not is_instance_valid(result_label):
+	if not LevelUtils.is_valid_node(result_label):
 		result_label = Label.new()
 		result_label.name = "ResultLabel"
 		result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -147,7 +146,7 @@ func setup_ui():
 		result_label.z_index = 30
 		add_child(result_label)
 
-	if control_label == null or not is_instance_valid(control_label):
+	if not LevelUtils.is_valid_node(control_label):
 		control_label = Label.new()
 		control_label.name = "SystemControlLabel"
 		control_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -158,7 +157,7 @@ func setup_ui():
 		control_label.z_index = 40
 		add_child(control_label)
 
-	if no_button == null or not is_instance_valid(no_button):
+	if not LevelUtils.is_valid_node(no_button):
 		no_button = Button.new()
 		no_button.name = "FailNoButton"
 		no_button.text = "Nesouhlasím"
@@ -168,7 +167,7 @@ func setup_ui():
 		no_button.pressed.connect(_on_no_pressed)
 		add_child(no_button)
 
-	if yes_button == null or not is_instance_valid(yes_button):
+	if not LevelUtils.is_valid_node(yes_button):
 		yes_button = Button.new()
 		yes_button.name = "SwappingYesButton"
 		yes_button.text = "Souhlasím"
@@ -184,8 +183,7 @@ func setup_ui():
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 
 	if article_label:
 		article_label.position = Vector2(70, 30)
@@ -314,64 +312,8 @@ func clamp_button_position(pos: Vector2) -> Vector2:
 
 
 func update_system_control_label_position():
-	if control_label == null or not is_instance_valid(control_label):
-		return
-
-	control_label.position = Vector2(window_size.x - 340, 8)
-	control_label.text = GameState.get_system_control_text()
+	LevelUtils.update_system_control_label(control_label, Vector2(window_size.x - 340, 8))
 
 
 func update_system_control_label():
-	if control_label != null and is_instance_valid(control_label):
-		control_label.text = GameState.get_system_control_text()
-
-
-func style_green_button(button: Button):
-	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
-	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
-	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
-	var disabled = make_button_style(Color(0.52, 0.62, 0.52), Color(0.32, 0.42, 0.32), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func style_red_button(button: Button):
-	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
-	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
-	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
-	var disabled = make_button_style(Color(0.62, 0.48, 0.48), Color(0.42, 0.30, 0.30), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.corner_radius_top_left = radius
-	sb.corner_radius_top_right = radius
-	sb.corner_radius_bottom_left = radius
-	sb.corner_radius_bottom_right = radius
-	return sb
+	LevelUtils.refresh_system_control_label(control_label)

@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -47,7 +47,7 @@ func start_level():
 
 	background.color = Color(0.96, 0.96, 0.92)
 
-	text_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	text_label.text = LevelUtils.get_article_text(article_number)
 	text_label.modulate = Color(0.10, 0.10, 0.10)
 
 	agree_button.visible = true
@@ -58,8 +58,8 @@ func start_level():
 	agree_button.text = "Souhlasím"
 	no_button.text = "Nesouhlasím"
 
-	style_green_button(agree_button)
-	style_red_button(no_button)
+	LevelUtils.style_green_button(agree_button)
+	LevelUtils.style_red_button(no_button)
 
 	if not agree_button.pressed.is_connected(_on_agree_pressed):
 		agree_button.pressed.connect(_on_agree_pressed)
@@ -88,8 +88,7 @@ func setup_ui():
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 
 	text_label.position = Vector2(70, 48)
 	text_label.size = Vector2(window_size.x - 140, window_size.y - 155)
@@ -164,46 +163,3 @@ func get_content_rect() -> Rect2:
 		Vector2(30, 40),
 		Vector2(window_size.x - 60, window_size.y - 115)
 	)
-
-
-func style_green_button(button: Button):
-	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
-	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
-	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 17)
-
-
-func style_red_button(button: Button):
-	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
-	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
-	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 17)
-
-
-func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.corner_radius_top_left = radius
-	sb.corner_radius_top_right = radius
-	sb.corner_radius_bottom_left = radius
-	sb.corner_radius_bottom_right = radius
-	return sb

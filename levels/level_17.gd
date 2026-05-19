@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -107,11 +107,10 @@ func _process(delta):
 
 
 func setup_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 	background.z_index = -10
 
-	if article_label == null or not is_instance_valid(article_label):
+	if not LevelUtils.is_valid_node(article_label):
 		article_label = Label.new()
 		article_label.name = "ArticleLabel"
 		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -122,7 +121,7 @@ func setup_ui():
 		article_label.z_index = 5
 		add_child(article_label)
 
-	if article_agree_button == null or not is_instance_valid(article_agree_button):
+	if not LevelUtils.is_valid_node(article_agree_button):
 		article_agree_button = Button.new()
 		article_agree_button.name = "ArticleAgreeButton"
 		article_agree_button.text = "Souhlasím"
@@ -131,7 +130,7 @@ func setup_ui():
 		article_agree_button.pressed.connect(_on_article_agree_pressed)
 		add_child(article_agree_button)
 
-	if article_no_button == null or not is_instance_valid(article_no_button):
+	if not LevelUtils.is_valid_node(article_no_button):
 		article_no_button = Button.new()
 		article_no_button.name = "ArticleNoButton"
 		article_no_button.text = "Nesouhlasím"
@@ -140,7 +139,7 @@ func setup_ui():
 		article_no_button.pressed.connect(_on_article_no_pressed)
 		add_child(article_no_button)
 
-	if instruction_label == null or not is_instance_valid(instruction_label):
+	if not LevelUtils.is_valid_node(instruction_label):
 		instruction_label = Label.new()
 		instruction_label.name = "InstructionLabel"
 		instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -151,7 +150,7 @@ func setup_ui():
 		instruction_label.z_index = 50
 		add_child(instruction_label)
 
-	if attempts_label == null or not is_instance_valid(attempts_label):
+	if not LevelUtils.is_valid_node(attempts_label):
 		attempts_label = Label.new()
 		attempts_label.name = "AttemptsLabel"
 		attempts_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -162,7 +161,7 @@ func setup_ui():
 		attempts_label.z_index = 200
 		add_child(attempts_label)
 
-	if result_label == null or not is_instance_valid(result_label):
+	if not LevelUtils.is_valid_node(result_label):
 		result_label = Label.new()
 		result_label.name = "ResultLabel"
 		result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -172,7 +171,7 @@ func setup_ui():
 		result_label.z_index = 50
 		add_child(result_label)
 
-	if control_label == null or not is_instance_valid(control_label):
+	if not LevelUtils.is_valid_node(control_label):
 		control_label = Label.new()
 		control_label.name = "SystemControlLabel"
 		control_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -183,8 +182,8 @@ func setup_ui():
 		control_label.z_index = 60
 		add_child(control_label)
 
-	style_green_button(article_agree_button)
-	style_red_button(article_no_button)
+	LevelUtils.style_green_button(article_agree_button)
+	LevelUtils.style_red_button(article_no_button)
 
 	layout_ui()
 	last_window_size = window_size
@@ -199,17 +198,17 @@ func show_article_screen():
 
 	article_label.visible = true
 	article_label.modulate = Color(0.10, 0.10, 0.10)
-	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	article_label.text = LevelUtils.get_article_text(article_number)
 
 	article_no_button.visible = true
 	article_no_button.disabled = false
 	article_no_button.text = "Nesouhlasím"
-	style_red_button(article_no_button)
+	LevelUtils.style_red_button(article_no_button)
 
 	article_agree_button.visible = true
 	article_agree_button.disabled = false
 	article_agree_button.text = "Souhlasím"
-	style_green_button(article_agree_button)
+	LevelUtils.style_green_button(article_agree_button)
 
 	instruction_label.visible = false
 	attempts_label.visible = false
@@ -252,8 +251,7 @@ func show_game_screen():
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 
 	if screen_state == "article":
 		article_label.position = Vector2(70, 30)
@@ -342,7 +340,7 @@ func create_reels():
 		stop.z_index = 8
 		stop.focus_mode = Control.FOCUS_NONE
 		stop.pressed.connect(_on_stop_pressed.bind(i))
-		style_blue_button(stop)
+		LevelUtils.style_blue_button(stop)
 		add_child(stop)
 		stop_buttons.append(stop)
 
@@ -426,7 +424,7 @@ func restart_reels_only():
 	]
 
 	for stop in stop_buttons:
-		if stop and is_instance_valid(stop):
+		if LevelUtils.is_valid_node(stop):
 			stop.disabled = false
 
 	result_label.visible = false
@@ -447,7 +445,7 @@ func complete_level():
 	completed = true
 
 	for stop in stop_buttons:
-		if stop and is_instance_valid(stop):
+		if LevelUtils.is_valid_node(stop):
 			stop.disabled = true
 
 	background.color = Color(0.84, 0.94, 0.84)
@@ -489,7 +487,7 @@ func fail_from_game():
 	failed = true
 
 	for stop in stop_buttons:
-		if stop and is_instance_valid(stop):
+		if LevelUtils.is_valid_node(stop):
 			stop.disabled = true
 
 	background.color = Color(0.95, 0.82, 0.82)
@@ -506,11 +504,11 @@ func fail_from_game():
 
 func clear_reels():
 	for panel in reels:
-		if panel and is_instance_valid(panel):
+		if LevelUtils.is_valid_node(panel):
 			panel.queue_free()
 
 	for stop in stop_buttons:
-		if stop and is_instance_valid(stop):
+		if LevelUtils.is_valid_node(stop):
 			stop.queue_free()
 
 	reels.clear()
@@ -519,23 +517,18 @@ func clear_reels():
 
 
 func update_attempts_label():
-	if attempts_label == null or not is_instance_valid(attempts_label):
+	if not LevelUtils.is_valid_node(attempts_label):
 		return
 
 	attempts_label.text = "Pokusy: " + str(attempts) + "/" + str(max_attempts)
 
 
 func update_system_control_label_position():
-	if control_label == null or not is_instance_valid(control_label):
-		return
-
-	control_label.position = Vector2(window_size.x - 340, 8)
-	control_label.text = GameState.get_system_control_text()
+	LevelUtils.update_system_control_label(control_label, Vector2(window_size.x - 340, 8))
 
 
 func update_system_control_label():
-	if control_label != null and is_instance_valid(control_label):
-		control_label.text = GameState.get_system_control_text()
+	LevelUtils.refresh_system_control_label(control_label)
 
 
 func make_panel_style() -> StyleBoxFlat:
@@ -553,62 +546,8 @@ func make_panel_style() -> StyleBoxFlat:
 	return sb
 
 
-func style_blue_button(button: Button):
-	var normal = make_button_style(Color(0.20, 0.50, 0.85), Color(0.10, 0.30, 0.70), 7)
-	var hover = make_button_style(Color(0.30, 0.65, 1.0), Color(0.15, 0.40, 0.80), 7)
-	var pressed = make_button_style(Color(0.15, 0.35, 0.70), Color(0.08, 0.20, 0.55), 7)
-	var disabled = make_button_style(Color(0.46, 0.52, 0.60), Color(0.28, 0.32, 0.40), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func style_green_button(button: Button):
-	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
-	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
-	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
-	var disabled = make_button_style(Color(0.52, 0.62, 0.52), Color(0.32, 0.42, 0.32), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func style_red_button(button: Button):
-	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
-	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
-	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
-	var disabled = make_button_style(Color(0.62, 0.48, 0.48), Color(0.42, 0.30, 0.30), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
-	button.add_theme_font_size_override("font_size", 16)
-
-
 func apply_green_style_to_display_button(button: Button):
-	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
+	var normal = LevelUtils.make_bold_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", normal)
@@ -620,7 +559,7 @@ func apply_green_style_to_display_button(button: Button):
 
 
 func apply_red_style_to_display_button(button: Button):
-	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
+	var normal = LevelUtils.make_bold_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", normal)
@@ -629,18 +568,3 @@ func apply_red_style_to_display_button(button: Button):
 	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
 	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
 	button.add_theme_font_size_override("font_size", 14)
-
-
-func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 2
-	sb.border_width_top = 2
-	sb.border_width_right = 2
-	sb.border_width_bottom = 2
-	sb.corner_radius_top_left = radius
-	sb.corner_radius_top_right = radius
-	sb.corner_radius_bottom_left = radius
-	sb.corner_radius_bottom_right = radius
-	return sb

@@ -2,6 +2,7 @@ extends Node
 
 var highest_unlocked_level = 1
 var max_selectable_level = 22
+
 var result_freeze_time = 1.5
 var result_success_text = "Souhlas byl přijatý."
 var result_fail_text = "Souhlas nebyl přijatý."
