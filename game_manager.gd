@@ -46,7 +46,6 @@ var monitor_bar_fill
 var monitor_percent_label
 
 var clock_timer = 0.0
-var bonus_level_launch_pending = false
 var highest_unlocked_article = 1
 var current_article_number = 1
 var used_random_levels = []
@@ -70,9 +69,6 @@ func _ready():
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 	randomize()
-
-	if not GameState.system_control_maxed.is_connected(_on_system_control_maxed):
-		GameState.system_control_maxed.connect(_on_system_control_maxed)
 
 	if GameState.has_signal("system_control_changed"):
 		if not GameState.system_control_changed.is_connected(_on_system_control_changed):
@@ -1419,51 +1415,6 @@ func start_level_21_direct():
 
 func start_level_22_direct():
 	start_level_22()
-
-
-func start_bonus_level_direct():
-	bonus_level_launch_pending = false
-	if ResourceLoader.exists("res://levels/BonusLevel.tscn"):
-		load_level("res://levels/BonusLevel.tscn", "Korekční protokol", Callable(self, "_on_bonus_level_finished"))
-	else:
-		show_popup_window(
-			"CHYBA",
-			"Soubor bonus levelu nebyl nalezen:\nres://levels/BonusLevel.tscn",
-			"Zpět na plochu",
-			Callable(self, "go_to_desktop")
-		)
-
-
-# =========================================================
-# BONUS / SYSTEM CONTROL 100 %
-# =========================================================
-
-func _on_system_control_maxed():
-	if bonus_level_launch_pending:
-		return
-
-	bonus_level_launch_pending = true
-	call_deferred("_start_bonus_level_from_system_control")
-
-
-func _start_bonus_level_from_system_control():
-	bonus_level_launch_pending = false
-	start_menu.visible = false
-
-	if ResourceLoader.exists("res://levels/BonusLevel.tscn"):
-		load_level("res://levels/BonusLevel.tscn", "Korekční protokol", Callable(self, "_on_bonus_level_finished"))
-	else:
-		show_popup_window(
-			"KONTROLA SYSTÉMU 100 %",
-			"Soubor bonus levelu nebyl nalezen:\nres://levels/BonusLevel.tscn\n\nVytvoř BonusLevel.tscn, jinak se bonus nespustí.",
-			"Zpět na plochu",
-			Callable(self, "go_to_desktop")
-		)
-
-
-func _on_bonus_level_finished():
-	GameState.reset_system_control()
-	go_to_desktop()
 
 
 # =========================================================

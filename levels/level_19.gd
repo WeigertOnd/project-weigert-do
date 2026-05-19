@@ -1,5 +1,7 @@
 extends Node2D
 
+const LevelUtils = preload("res://levels/LevelUtils.gd")
+
 signal level_finished
 signal level_failed
 
@@ -101,11 +103,10 @@ func _draw():
 
 
 func setup_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 	background.z_index = -100
 
-	if score_label == null or not is_instance_valid(score_label):
+	if not LevelUtils.is_valid_node(score_label):
 		score_label = Label.new()
 		score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		score_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -114,7 +115,7 @@ func setup_ui():
 		score_label.z_index = 10
 		add_child(score_label)
 
-	if target_label == null or not is_instance_valid(target_label):
+	if not LevelUtils.is_valid_node(target_label):
 		target_label = Label.new()
 		target_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		target_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -123,7 +124,7 @@ func setup_ui():
 		target_label.z_index = 10
 		add_child(target_label)
 
-	if result_label == null or not is_instance_valid(result_label):
+	if not LevelUtils.is_valid_node(result_label):
 		result_label = Label.new()
 		result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -131,7 +132,7 @@ func setup_ui():
 		result_label.z_index = 10
 		add_child(result_label)
 
-	if control_label == null or not is_instance_valid(control_label):
+	if not LevelUtils.is_valid_node(control_label):
 		control_label = Label.new()
 		control_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		control_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -141,7 +142,7 @@ func setup_ui():
 		control_label.z_index = 12
 		add_child(control_label)
 
-	if shot_button == null or not is_instance_valid(shot_button):
+	if not LevelUtils.is_valid_node(shot_button):
 		shot_button = Button.new()
 		shot_button.text = "Výstřel"
 		shot_button.z_index = 12
@@ -149,7 +150,7 @@ func setup_ui():
 		style_button(shot_button, true)
 		add_child(shot_button)
 
-	if no_button == null or not is_instance_valid(no_button):
+	if not LevelUtils.is_valid_node(no_button):
 		no_button = Button.new()
 		no_button.text = "Souhlasím"
 		no_button.z_index = 12
@@ -161,8 +162,7 @@ func setup_ui():
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 	var board_height = min(470.0, window_size.y - 84.0)
 	board_rect = Rect2(window_size.x / 2.0 - 215.0, 20.0, 430.0, board_height)
 
@@ -399,15 +399,11 @@ func fail_level():
 
 
 func update_system_control_label_position():
-	if control_label == null or not is_instance_valid(control_label):
-		return
-	control_label.position = Vector2(window_size.x - 340, 8)
-	control_label.text = GameState.get_system_control_text()
+	LevelUtils.update_system_control_label(control_label, Vector2(window_size.x - 340, 8))
 
 
 func update_system_control_label():
-	if control_label != null and is_instance_valid(control_label):
-		control_label.text = GameState.get_system_control_text()
+	LevelUtils.refresh_system_control_label(control_label)
 
 
 func style_button(button: Button, primary: bool):
@@ -416,25 +412,10 @@ func style_button(button: Button, primary: bool):
 	if primary:
 		bg = Color(0.70, 0.70, 0.68)
 		border = Color(0.38, 0.38, 0.36)
-	button.add_theme_stylebox_override("normal", make_button_style(bg, border))
-	button.add_theme_stylebox_override("hover", make_button_style(bg.lerp(Color(1, 1, 1), 0.22), border.lerp(Color(1, 1, 1), 0.10)))
-	button.add_theme_stylebox_override("pressed", make_button_style(bg.lerp(Color(0, 0, 0), 0.08), border))
-	button.add_theme_stylebox_override("disabled", make_button_style(Color(0.68, 0.70, 0.70), Color(0.36, 0.40, 0.44)))
+	button.add_theme_stylebox_override("normal", LevelUtils.make_grid_button_style(bg, border))
+	button.add_theme_stylebox_override("hover", LevelUtils.make_grid_button_style(bg.lerp(Color(1, 1, 1), 0.22), border.lerp(Color(1, 1, 1), 0.10)))
+	button.add_theme_stylebox_override("pressed", LevelUtils.make_grid_button_style(bg.lerp(Color(0, 0, 0), 0.08), border))
+	button.add_theme_stylebox_override("disabled", LevelUtils.make_grid_button_style(Color(0.68, 0.70, 0.70), Color(0.36, 0.40, 0.44)))
 	button.add_theme_color_override("font_color", Color(0.08, 0.18, 0.32) if primary else Color(1, 1, 1))
 	button.add_theme_color_override("font_disabled_color", Color(0.32, 0.36, 0.38))
 	button.add_theme_font_size_override("font_size", 15)
-
-
-func make_button_style(bg: Color, border: Color) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 2
-	sb.border_width_top = 2
-	sb.border_width_right = 2
-	sb.border_width_bottom = 2
-	sb.corner_radius_top_left = 8
-	sb.corner_radius_top_right = 8
-	sb.corner_radius_bottom_left = 8
-	sb.corner_radius_bottom_right = 8
-	return sb

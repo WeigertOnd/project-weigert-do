@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -120,7 +120,7 @@ func show_article_screen():
 
 	text_label.visible = true
 	text_label.modulate = Color(0.10, 0.10, 0.10)
-	text_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	text_label.text = LevelUtils.get_article_text(article_number)
 
 	agree_button.visible = true
 	no_button.visible = true
@@ -130,8 +130,8 @@ func show_article_screen():
 	agree_button.text = "Souhlasím"
 	no_button.text = "Nesouhlasím"
 
-	style_green_button(agree_button)
-	style_red_button(no_button)
+	LevelUtils.style_green_button(agree_button)
+	LevelUtils.style_red_button(no_button)
 
 	layout_ui()
 
@@ -420,7 +420,7 @@ func get_adjacent_mine_count(row: int, col: int) -> int:
 
 func clear_grid_buttons_only():
 	for button in grid_buttons.values():
-		if button != null and is_instance_valid(button):
+		if LevelUtils.is_valid_node(button):
 			button.queue_free()
 
 	grid_buttons.clear()
@@ -446,8 +446,7 @@ func _process(_delta):
 
 func layout_ui():
 	if background:
-		background.position = Vector2.ZERO
-		background.size = window_size
+		LevelUtils.layout_background(background, window_size)
 
 	if screen_state == "article":
 		text_label.position = Vector2(70, 40)
@@ -486,38 +485,10 @@ func _on_no_pressed():
 	level_failed.emit()
 
 
-func style_green_button(button: Button):
-	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
-	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
-	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 17)
-
-
-func style_red_button(button: Button):
-	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
-	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
-	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 17)
-
-
 func style_clickable_cell(button: Button):
-	var normal = make_button_style(Color(0.92, 0.95, 1.0), Color(0.26, 0.44, 0.72), 4)
-	var hover = make_button_style(Color(1.0, 1.0, 1.0), Color(0.14, 0.34, 0.78), 4)
-	var pressed = make_button_style(Color(0.76, 0.84, 0.98), Color(0.12, 0.28, 0.65), 4)
+	var normal = LevelUtils.make_button_style(Color(0.92, 0.95, 1.0), Color(0.26, 0.44, 0.72), 4)
+	var hover = LevelUtils.make_button_style(Color(1.0, 1.0, 1.0), Color(0.14, 0.34, 0.78), 4)
+	var pressed = LevelUtils.make_button_style(Color(0.76, 0.84, 0.98), Color(0.12, 0.28, 0.65), 4)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
@@ -527,9 +498,9 @@ func style_clickable_cell(button: Button):
 
 
 func style_flagged_cell(button: Button):
-	var normal = make_button_style(Color(0.96, 0.84, 0.42), Color(0.56, 0.38, 0.08), 4)
-	var hover = make_button_style(Color(1.0, 0.90, 0.52), Color(0.64, 0.44, 0.10), 4)
-	var pressed = make_button_style(Color(0.86, 0.72, 0.30), Color(0.46, 0.30, 0.06), 4)
+	var normal = LevelUtils.make_button_style(Color(0.96, 0.84, 0.42), Color(0.56, 0.38, 0.08), 4)
+	var hover = LevelUtils.make_button_style(Color(1.0, 0.90, 0.52), Color(0.64, 0.44, 0.10), 4)
+	var pressed = LevelUtils.make_button_style(Color(0.86, 0.72, 0.30), Color(0.46, 0.30, 0.06), 4)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
@@ -539,8 +510,8 @@ func style_flagged_cell(button: Button):
 
 
 func style_locked_cell(button: Button):
-	var normal = make_button_style(Color(0.45, 0.56, 0.66), Color(0.22, 0.34, 0.46), 4)
-	var disabled = make_button_style(Color(0.45, 0.56, 0.66), Color(0.22, 0.34, 0.46), 4)
+	var normal = LevelUtils.make_button_style(Color(0.45, 0.56, 0.66), Color(0.22, 0.34, 0.46), 4)
+	var disabled = LevelUtils.make_button_style(Color(0.45, 0.56, 0.66), Color(0.22, 0.34, 0.46), 4)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("disabled", disabled)
@@ -554,8 +525,8 @@ func style_revealed_cell(button: Button, count: int):
 	if count == 0:
 		bg = Color(0.90, 0.94, 0.92)
 
-	var normal = make_button_style(bg, Color(0.30, 0.44, 0.56), 4)
-	var disabled = make_button_style(bg, Color(0.30, 0.44, 0.56), 4)
+	var normal = LevelUtils.make_button_style(bg, Color(0.30, 0.44, 0.56), 4)
+	var disabled = LevelUtils.make_button_style(bg, Color(0.30, 0.44, 0.56), 4)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("disabled", disabled)
@@ -565,26 +536,11 @@ func style_revealed_cell(button: Button, count: int):
 
 
 func style_mine_cell(button: Button):
-	var normal = make_button_style(Color(0.75, 0.12, 0.16), Color(0.40, 0.02, 0.04), 4)
-	var disabled = make_button_style(Color(0.75, 0.12, 0.16), Color(0.40, 0.02, 0.04), 4)
+	var normal = LevelUtils.make_button_style(Color(0.75, 0.12, 0.16), Color(0.40, 0.02, 0.04), 4)
+	var disabled = LevelUtils.make_button_style(Color(0.75, 0.12, 0.16), Color(0.40, 0.02, 0.04), 4)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("disabled", disabled)
 	button.add_theme_color_override("font_color", Color(1, 1, 1))
 	button.add_theme_color_override("font_disabled_color", Color(1, 1, 1))
 	button.add_theme_font_size_override("font_size", 9)
-
-
-func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.corner_radius_top_left = radius
-	sb.corner_radius_top_right = radius
-	sb.corner_radius_bottom_left = radius
-	sb.corner_radius_bottom_right = radius
-	return sb

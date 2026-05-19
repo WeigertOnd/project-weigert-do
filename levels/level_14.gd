@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -73,7 +73,7 @@ func start_level():
 
 	article_label.visible = true
 	article_label.modulate = Color(0.10, 0.10, 0.10)
-	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	article_label.text = LevelUtils.get_article_text(article_number)
 
 	instruction_label.visible = true
 	result_label.visible = false
@@ -87,11 +87,10 @@ func start_level():
 
 
 func setup_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 	background.z_index = -10
 
-	if article_label == null or not is_instance_valid(article_label):
+	if not LevelUtils.is_valid_node(article_label):
 		article_label = Label.new()
 		article_label.name = "ArticleLabel"
 		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -101,7 +100,7 @@ func setup_ui():
 		article_label.z_index = 5
 		add_child(article_label)
 
-	if instruction_label == null or not is_instance_valid(instruction_label):
+	if not LevelUtils.is_valid_node(instruction_label):
 		instruction_label = Label.new()
 		instruction_label.name = "InstructionLabel"
 		instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -112,7 +111,7 @@ func setup_ui():
 		instruction_label.z_index = 10
 		add_child(instruction_label)
 
-	if track_panel == null or not is_instance_valid(track_panel):
+	if not LevelUtils.is_valid_node(track_panel):
 		track_panel = Panel.new()
 		track_panel.name = "TrackPanel"
 		track_panel.z_index = 1
@@ -122,7 +121,7 @@ func setup_ui():
 		add_child(track_panel)
 		style_track(track_panel)
 
-	if result_label == null or not is_instance_valid(result_label):
+	if not LevelUtils.is_valid_node(result_label):
 		result_label = Label.new()
 		result_label.name = "ResultLabel"
 		result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -132,7 +131,7 @@ func setup_ui():
 		result_label.z_index = 80
 		add_child(result_label)
 
-	if control_label == null or not is_instance_valid(control_label):
+	if not LevelUtils.is_valid_node(control_label):
 		control_label = Label.new()
 		control_label.name = "SystemControlLabel"
 		control_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -148,8 +147,7 @@ func setup_ui():
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 
 	if article_label:
 		article_label.position = Vector2(70, 28)
@@ -182,7 +180,7 @@ func create_button_row():
 		btn.set_meta("correct", i == correct_index)
 		btn.set_meta("index", i)
 
-		style_red_button(btn)
+LevelUtils.style_red_button(btn)
 
 		btn.pressed.connect(_on_button_pressed.bind(btn))
 
@@ -195,7 +193,7 @@ func create_button_row():
 
 
 func update_button_positions():
-	if track_panel == null or not is_instance_valid(track_panel):
+	if not LevelUtils.is_valid_node(track_panel):
 		return
 
 	var start_x = 20.0 - scroll_offset
@@ -204,7 +202,7 @@ func update_button_positions():
 	for i in range(buttons.size()):
 		var btn = buttons[i]
 
-		if btn == null or not is_instance_valid(btn):
+		if not LevelUtils.is_valid_node(btn):
 			continue
 
 		btn.position = Vector2(start_x + i * item_spacing, y)
@@ -285,7 +283,7 @@ func complete_level():
 	result_label.visible = true
 
 	for btn in buttons:
-		if btn and is_instance_valid(btn):
+		if LevelUtils.is_valid_node(btn):
 			btn.disabled = true
 
 	GameState.reduce_system_control(5)
@@ -308,7 +306,7 @@ func fail_level():
 	result_label.visible = true
 
 	for btn in buttons:
-		if btn and is_instance_valid(btn):
+		if LevelUtils.is_valid_node(btn):
 			btn.disabled = true
 
 	GameState.add_system_control(8)
@@ -320,23 +318,18 @@ func fail_level():
 
 func clear_buttons():
 	for btn in buttons:
-		if btn and is_instance_valid(btn):
+		if LevelUtils.is_valid_node(btn):
 			btn.queue_free()
 
 	buttons.clear()
 
 
 func update_system_control_label_position():
-	if control_label == null or not is_instance_valid(control_label):
-		return
-
-	control_label.position = Vector2(window_size.x - 340, window_size.y - 34)
-	control_label.text = GameState.get_system_control_text()
+	LevelUtils.update_system_control_label(control_label, Vector2(window_size.x - 340, window_size.y - 34))
 
 
 func update_system_control_label():
-	if control_label != null and is_instance_valid(control_label):
-		control_label.text = GameState.get_system_control_text()
+	LevelUtils.refresh_system_control_label(control_label)
 
 
 func style_track(panel: Panel):
@@ -353,37 +346,3 @@ func style_track(panel: Panel):
 	sb.corner_radius_bottom_right = 8
 	panel.add_theme_stylebox_override("panel", sb)
 
-
-func style_red_button(button: Button):
-	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
-	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
-	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
-	var disabled = make_button_style(Color(0.62, 0.48, 0.48), Color(0.42, 0.30, 0.30), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
-	button.add_theme_font_size_override("font_size", 14)
-
-
-func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.corner_radius_top_left = radius
-	sb.corner_radius_top_right = radius
-	sb.corner_radius_bottom_left = radius
-	sb.corner_radius_bottom_right = radius
-	sb.shadow_color = Color(1, 1, 1, 0.20)
-	sb.shadow_size = 1
-	return sb

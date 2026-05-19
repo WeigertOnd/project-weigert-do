@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -83,11 +83,10 @@ func _process(delta):
 
 
 func setup_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 	background.z_index = -100
 
-	if article_label == null or not is_instance_valid(article_label):
+	if not LevelUtils.is_valid_node(article_label):
 		article_label = Label.new()
 		article_label.name = "ArticleLabel"
 		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -98,7 +97,7 @@ func setup_ui():
 		article_label.z_index = 10
 		add_child(article_label)
 
-	if article_agree_button == null or not is_instance_valid(article_agree_button):
+	if not LevelUtils.is_valid_node(article_agree_button):
 		article_agree_button = Button.new()
 		article_agree_button.name = "ArticleAgreeButton"
 		article_agree_button.text = "Souhlasím"
@@ -107,7 +106,7 @@ func setup_ui():
 		article_agree_button.pressed.connect(_on_article_agree_pressed)
 		add_child(article_agree_button)
 
-	if article_no_button == null or not is_instance_valid(article_no_button):
+	if not LevelUtils.is_valid_node(article_no_button):
 		article_no_button = Button.new()
 		article_no_button.name = "ArticleNoButton"
 		article_no_button.text = "Nesouhlasím"
@@ -116,7 +115,7 @@ func setup_ui():
 		article_no_button.pressed.connect(_on_article_no_pressed)
 		add_child(article_no_button)
 
-	if instruction_label == null or not is_instance_valid(instruction_label):
+	if not LevelUtils.is_valid_node(instruction_label):
 		instruction_label = Label.new()
 		instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		instruction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -126,7 +125,7 @@ func setup_ui():
 		instruction_label.z_index = 40
 		add_child(instruction_label)
 
-	if timer_label == null or not is_instance_valid(timer_label):
+	if not LevelUtils.is_valid_node(timer_label):
 		timer_label = Label.new()
 		timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -135,7 +134,7 @@ func setup_ui():
 		timer_label.z_index = 45
 		add_child(timer_label)
 
-	if result_label == null or not is_instance_valid(result_label):
+	if not LevelUtils.is_valid_node(result_label):
 		result_label = Label.new()
 		result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -143,7 +142,7 @@ func setup_ui():
 		result_label.z_index = 70
 		add_child(result_label)
 
-	if control_label == null or not is_instance_valid(control_label):
+	if not LevelUtils.is_valid_node(control_label):
 		control_label = Label.new()
 		control_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		control_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -153,14 +152,14 @@ func setup_ui():
 		control_label.z_index = 80
 		add_child(control_label)
 
-	if search_panel == null or not is_instance_valid(search_panel):
+	if not LevelUtils.is_valid_node(search_panel):
 		search_panel = Panel.new()
 		search_panel.z_index = 55
 		search_panel.add_theme_stylebox_override("panel", make_panel_style())
 		add_child(search_panel)
 
-	style_green_button(article_agree_button)
-	style_red_button(article_no_button)
+	LevelUtils.style_green_button(article_agree_button)
+	LevelUtils.style_red_button(article_no_button)
 	layout_ui()
 
 
@@ -169,7 +168,7 @@ func show_article_screen():
 	background.color = Color(0.96, 0.96, 0.92)
 	article_label.visible = true
 	article_label.modulate = Color(0.10, 0.10, 0.10)
-	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	article_label.text = LevelUtils.get_article_text(article_number)
 	article_no_button.visible = true
 	article_no_button.disabled = false
 	article_agree_button.visible = true
@@ -201,8 +200,7 @@ func set_game_visible(visible: bool):
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 
 	if screen_state == "article":
 		article_label.position = Vector2(70, 30)
@@ -251,7 +249,7 @@ func create_grid():
 
 func clear_grid():
 	for cell in cells:
-		if cell and is_instance_valid(cell):
+		if LevelUtils.is_valid_node(cell):
 			cell.queue_free()
 	cells.clear()
 
@@ -367,7 +365,7 @@ func _on_cell_pressed(row: int, col: int):
 func highlight_word():
 	for pos in target_cells:
 		var index = pos.y * cols + pos.x
-		cells[index].add_theme_stylebox_override("normal", make_button_style(Color(0.65, 0.90, 0.66), Color(0.10, 0.45, 0.22)))
+		cells[index].add_theme_stylebox_override("normal", LevelUtils.make_grid_button_style(Color(0.65, 0.90, 0.66), Color(0.10, 0.45, 0.22)))
 
 
 func complete_level():
@@ -406,37 +404,17 @@ func update_timer_label():
 
 
 func update_system_control_label_position():
-	if control_label == null or not is_instance_valid(control_label):
-		return
-	control_label.position = Vector2(window_size.x - 340, 8)
-	control_label.text = GameState.get_system_control_text()
+	LevelUtils.update_system_control_label(control_label, Vector2(window_size.x - 340, 8))
 
 
 func update_system_control_label():
-	if control_label != null and is_instance_valid(control_label):
-		control_label.text = GameState.get_system_control_text()
-
-
-func style_green_button(button: Button):
-	button.add_theme_stylebox_override("normal", make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12)))
-	button.add_theme_stylebox_override("hover", make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15)))
-	button.add_theme_stylebox_override("pressed", make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08)))
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func style_red_button(button: Button):
-	button.add_theme_stylebox_override("normal", make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04)))
-	button.add_theme_stylebox_override("hover", make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05)))
-	button.add_theme_stylebox_override("pressed", make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02)))
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 16)
+	LevelUtils.refresh_system_control_label(control_label)
 
 
 func style_cell(button: Button):
-	button.add_theme_stylebox_override("normal", make_button_style(Color(0.98, 0.98, 0.96), Color(0.42, 0.50, 0.70)))
-	button.add_theme_stylebox_override("hover", make_button_style(Color(0.90, 0.95, 1.0), Color(0.20, 0.40, 0.72)))
-	button.add_theme_stylebox_override("pressed", make_button_style(Color(0.78, 0.88, 1.0), Color(0.20, 0.40, 0.72)))
+	button.add_theme_stylebox_override("normal", LevelUtils.make_grid_button_style(Color(0.98, 0.98, 0.96), Color(0.42, 0.50, 0.70)))
+	button.add_theme_stylebox_override("hover", LevelUtils.make_grid_button_style(Color(0.90, 0.95, 1.0), Color(0.20, 0.40, 0.72)))
+	button.add_theme_stylebox_override("pressed", LevelUtils.make_grid_button_style(Color(0.78, 0.88, 1.0), Color(0.20, 0.40, 0.72)))
 	button.add_theme_color_override("font_color", Color(0.18, 0.25, 0.50))
 	button.add_theme_font_size_override("font_size", 16)
 
@@ -449,21 +427,6 @@ func make_panel_style() -> StyleBoxFlat:
 	sb.border_width_top = 3
 	sb.border_width_right = 3
 	sb.border_width_bottom = 3
-	sb.corner_radius_top_left = 8
-	sb.corner_radius_top_right = 8
-	sb.corner_radius_bottom_left = 8
-	sb.corner_radius_bottom_right = 8
-	return sb
-
-
-func make_button_style(bg: Color, border: Color) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 2
-	sb.border_width_top = 2
-	sb.border_width_right = 2
-	sb.border_width_bottom = 2
 	sb.corner_radius_top_left = 8
 	sb.corner_radius_top_right = 8
 	sb.corner_radius_bottom_left = 8
