@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -29,10 +29,15 @@ var cols = 18
 var target_letters = ["S", "O", "U", "H", "L", "A", "S", "Í", "M"]
 var allowed_letters = ["S", "O", "U", "H", "L", "A", "Í", "M"]
 var target_cells = []
+
+var max_time = 60.0
 var time_left = 60.0
+
+var max_attempts = 5
+var attempts_left = 5
+
 var completed = false
 var failed = false
-var fail_freeze_time = 0.8
 
 
 func _ready():
@@ -42,6 +47,7 @@ func _ready():
 
 func set_article_number(new_article_number: int):
 	article_number = new_article_number
+
 	if is_inside_tree():
 		start_level()
 
@@ -49,6 +55,7 @@ func set_article_number(new_article_number: int):
 func set_window_size(new_size):
 	if window_size == new_size:
 		return
+
 	window_size = new_size
 	layout_ui()
 	last_window_size = window_size
@@ -58,9 +65,13 @@ func start_level():
 	screen_state = "article"
 	completed = false
 	failed = false
-	time_left = 60.0
+	time_left = max_time
+	attempts_left = max_attempts
+
 	setup_ui()
+
 	background.color = Color(0.96, 0.96, 0.92)
+
 	show_article_screen()
 	update_system_control_label()
 	layout_ui()
@@ -71,23 +82,28 @@ func _process(delta):
 	if last_window_size != window_size:
 		last_window_size = window_size
 		layout_ui()
+
 	update_system_control_label_position()
 
 	if screen_state != "game" or completed or failed:
 		return
 
 	time_left -= delta
-	update_timer_label()
+
 	if time_left <= 0.0:
+		time_left = 0.0
+		update_timer_label()
 		fail_level("Čas vypršel.")
+		return
+
+	update_timer_label()
 
 
 func setup_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 	background.z_index = -100
 
-	if article_label == null or not is_instance_valid(article_label):
+	if not LevelUtils.is_valid_node(article_label):
 		article_label = Label.new()
 		article_label.name = "ArticleLabel"
 		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -98,7 +114,7 @@ func setup_ui():
 		article_label.z_index = 10
 		add_child(article_label)
 
-	if article_agree_button == null or not is_instance_valid(article_agree_button):
+	if not LevelUtils.is_valid_node(article_agree_button):
 		article_agree_button = Button.new()
 		article_agree_button.name = "ArticleAgreeButton"
 		article_agree_button.text = "Souhlasím"
@@ -107,7 +123,7 @@ func setup_ui():
 		article_agree_button.pressed.connect(_on_article_agree_pressed)
 		add_child(article_agree_button)
 
-	if article_no_button == null or not is_instance_valid(article_no_button):
+	if not LevelUtils.is_valid_node(article_no_button):
 		article_no_button = Button.new()
 		article_no_button.name = "ArticleNoButton"
 		article_no_button.text = "Nesouhlasím"
@@ -116,7 +132,7 @@ func setup_ui():
 		article_no_button.pressed.connect(_on_article_no_pressed)
 		add_child(article_no_button)
 
-	if instruction_label == null or not is_instance_valid(instruction_label):
+	if not LevelUtils.is_valid_node(instruction_label):
 		instruction_label = Label.new()
 		instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		instruction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -126,7 +142,7 @@ func setup_ui():
 		instruction_label.z_index = 40
 		add_child(instruction_label)
 
-	if timer_label == null or not is_instance_valid(timer_label):
+	if not LevelUtils.is_valid_node(timer_label):
 		timer_label = Label.new()
 		timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -135,7 +151,7 @@ func setup_ui():
 		timer_label.z_index = 45
 		add_child(timer_label)
 
-	if result_label == null or not is_instance_valid(result_label):
+	if not LevelUtils.is_valid_node(result_label):
 		result_label = Label.new()
 		result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -143,7 +159,7 @@ func setup_ui():
 		result_label.z_index = 70
 		add_child(result_label)
 
-	if control_label == null or not is_instance_valid(control_label):
+	if not LevelUtils.is_valid_node(control_label):
 		control_label = Label.new()
 		control_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		control_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -153,44 +169,59 @@ func setup_ui():
 		control_label.z_index = 80
 		add_child(control_label)
 
-	if search_panel == null or not is_instance_valid(search_panel):
+	if not LevelUtils.is_valid_node(search_panel):
 		search_panel = Panel.new()
 		search_panel.z_index = 55
 		search_panel.add_theme_stylebox_override("panel", make_panel_style())
 		add_child(search_panel)
 
-	style_green_button(article_agree_button)
-	style_red_button(article_no_button)
+	LevelUtils.style_green_button(article_agree_button)
+	LevelUtils.style_red_button(article_no_button)
+
 	layout_ui()
 
 
 func show_article_screen():
 	screen_state = "article"
+
 	background.color = Color(0.96, 0.96, 0.92)
+
 	article_label.visible = true
 	article_label.modulate = Color(0.10, 0.10, 0.10)
-	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	article_label.text = LevelUtils.get_article_text(article_number)
+
 	article_no_button.visible = true
 	article_no_button.disabled = false
+
 	article_agree_button.visible = true
 	article_agree_button.disabled = false
+
 	set_game_visible(false)
+	layout_ui()
 
 
 func show_game_screen():
 	screen_state = "game"
 	completed = false
 	failed = false
-	time_left = 60.0
+	time_left = max_time
+	attempts_left = max_attempts
+
 	background.color = Color(0.96, 0.96, 0.92)
+
 	article_label.visible = false
 	article_no_button.visible = false
 	article_agree_button.visible = false
+
 	set_game_visible(true)
+
 	result_label.visible = false
+	result_label.text = ""
+
 	create_grid()
 	layout_ui()
 	update_timer_label()
+	update_instruction_label()
 
 
 func set_game_visible(visible: bool):
@@ -201,42 +232,54 @@ func set_game_visible(visible: bool):
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 
 	if screen_state == "article":
 		article_label.position = Vector2(70, 30)
 		article_label.size = Vector2(window_size.x - 140, window_size.y - 145)
+
 		var article_button_size = Vector2(180, 44)
 		var spacing = 80
 		var total_width = article_button_size.x * 2 + spacing
 		var start_x = window_size.x / 2.0 - total_width / 2.0
 		var button_y = window_size.y - 68
+
 		article_no_button.size = article_button_size
 		article_agree_button.size = article_button_size
+
 		article_no_button.position = Vector2(start_x, button_y)
 		article_agree_button.position = Vector2(start_x + article_button_size.x + spacing, button_y)
+
 		update_system_control_label_position()
 		return
 
 	instruction_label.position = Vector2(60, 24)
 	instruction_label.size = Vector2(window_size.x - 120, 36)
-	instruction_label.text = "Najdi slovo SOUHLASÍM."
+	update_instruction_label()
 
 	timer_label.position = Vector2(60, 60)
 	timer_label.size = Vector2(window_size.x - 120, 28)
 
 	search_panel.position = Vector2(48, 94)
 	search_panel.size = Vector2(window_size.x - 96, min(350.0, window_size.y - 154.0))
+
 	result_label.position = Vector2(70, window_size.y - 56)
 	result_label.size = Vector2(window_size.x - 140, 34)
+
 	layout_grid()
 	update_system_control_label_position()
 
 
+func update_instruction_label():
+	if instruction_label:
+		instruction_label.text = "Najdi slovo SOUHLASÍM. Pokusy: " + str(attempts_left) + "/" + str(max_attempts)
+
+
 func create_grid():
 	clear_grid()
+
 	var grid = make_letter_grid()
+
 	for r in range(rows):
 		for c in range(cols):
 			var cell = Button.new()
@@ -251,17 +294,26 @@ func create_grid():
 
 func clear_grid():
 	for cell in cells:
-		if cell and is_instance_valid(cell):
+		if LevelUtils.is_valid_node(cell):
 			cell.queue_free()
+
 	cells.clear()
 
 
 func layout_grid():
 	if cells.is_empty():
 		return
+
 	var start = Vector2(24, 24)
-	var gap = Vector2((search_panel.size.x - 48.0) / float(cols), (search_panel.size.y - 48.0) / float(rows))
-	var cell_size = Vector2(min(32.0, gap.x - 4.0), min(28.0, gap.y - 4.0))
+	var gap = Vector2(
+		(search_panel.size.x - 48.0) / float(cols),
+		(search_panel.size.y - 48.0) / float(rows)
+	)
+	var cell_size = Vector2(
+		min(32.0, gap.x - 4.0),
+		min(28.0, gap.y - 4.0)
+	)
+
 	for r in range(rows):
 		for c in range(cols):
 			var index = r * cols + c
@@ -272,45 +324,61 @@ func layout_grid():
 func make_letter_grid() -> Array:
 	for attempts in range(160):
 		var grid = []
+
 		for r in range(rows):
 			var row = []
+
 			for c in range(cols):
 				row.append(allowed_letters.pick_random())
+
 			grid.append(row)
 
 		place_target_word(grid)
+
 		if count_target_words(grid) == 1:
 			return grid
+
 	return make_simple_grid()
 
 
 func make_simple_grid() -> Array:
 	var grid = []
+
 	for r in range(rows):
 		var row = []
+
 		for c in range(cols):
 			row.append(allowed_letters.pick_random())
+
 		grid.append(row)
+
 	target_cells.clear()
+
 	for i in range(target_letters.size()):
 		grid[i][2] = target_letters[i]
 		target_cells.append(Vector2i(2, i))
+
 	return grid
 
 
 func place_target_word(grid: Array):
 	var directions = [Vector2i(1, 0), Vector2i(0, 1)]
 	var dir = directions.pick_random()
+
 	var start_col_min = 0 if dir.x >= 0 else target_letters.size() - 1
 	var start_col_max = cols - target_letters.size() if dir.x >= 0 else cols - 1
 	var start_row_min = 0
 	var start_row_max = rows - target_letters.size() if dir.y > 0 else rows - 1
+
 	var start_col = randi_range(start_col_min, start_col_max)
 	var start_row = randi_range(start_row_min, start_row_max)
+
 	target_cells.clear()
+
 	for i in range(target_letters.size()):
 		var c = start_col + dir.x * i
 		var r = start_row + dir.y * i
+
 		grid[r][c] = target_letters[i]
 		target_cells.append(Vector2i(c, r))
 
@@ -318,11 +386,13 @@ func place_target_word(grid: Array):
 func count_target_words(grid: Array) -> int:
 	var directions = [Vector2i(1, 0), Vector2i(0, 1)]
 	var total = 0
+
 	for r in range(rows):
 		for c in range(cols):
 			for dir in directions:
 				if word_at(grid, r, c, dir):
 					total += 1
+
 	return total
 
 
@@ -330,22 +400,27 @@ func word_at(grid: Array, row: int, col: int, dir: Vector2i) -> bool:
 	for i in range(target_letters.size()):
 		var r = row + dir.y * i
 		var c = col + dir.x * i
+
 		if r < 0 or r >= rows or c < 0 or c >= cols:
 			return false
+
 		if grid[r][c] != target_letters[i]:
 			return false
+
 	return true
 
 
 func _on_article_agree_pressed():
 	if completed or failed:
 		return
+
 	show_game_screen()
 
 
 func _on_article_no_pressed():
 	if completed or failed:
 		return
+
 	fail_level("Souhlas nebyl dokončen.")
 
 
@@ -356,48 +431,77 @@ func _on_cell_pressed(row: int, col: int):
 	if target_cells.has(Vector2i(col, row)):
 		highlight_word()
 		complete_level()
-	else:
-		GameState.add_system_control(3)
-		update_system_control_label()
-		result_label.modulate = Color(0.58, 0.0, 0.0)
-		result_label.text = "Tady SOUHLASÍM není."
-		result_label.visible = true
+		return
+
+	attempts_left -= 1
+	update_instruction_label()
+	update_system_control_label()
+
+	result_label.modulate = Color(0.58, 0.0, 0.0)
+	result_label.visible = true
+
+	if attempts_left <= 0:
+		attempts_left = 0
+		update_instruction_label()
+		result_label.text = GameState.result_fail_text
+		fail_level("Došly pokusy.")
+		return
+
+	result_label.text = "Tady SOUHLASÍM není. Zbývá pokusů: " + str(attempts_left)
 
 
 func highlight_word():
 	for pos in target_cells:
 		var index = pos.y * cols + pos.x
-		cells[index].add_theme_stylebox_override("normal", make_button_style(Color(0.65, 0.90, 0.66), Color(0.10, 0.45, 0.22)))
+		cells[index].add_theme_stylebox_override(
+			"normal",
+			LevelUtils.make_grid_button_style(Color(0.65, 0.90, 0.66), Color(0.10, 0.45, 0.22))
+		)
 
 
 func complete_level():
 	completed = true
 	background.color = Color(0.84, 0.94, 0.84)
+
 	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = "Jedno jediné SOUHLASÍM nalezeno."
+	result_label.text = GameState.result_success_text
 	result_label.visible = true
-	GameState.reduce_system_control(5)
+
 	update_system_control_label()
-	await get_tree().create_timer(0.9).timeout
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
 func fail_level(message: String):
 	if failed:
 		return
+
 	failed = true
 	background.color = Color(0.95, 0.82, 0.82)
+
 	if screen_state == "article":
 		article_no_button.disabled = true
 		article_agree_button.disabled = true
+
 		article_label.modulate = Color(0.58, 0.0, 0.0)
-		article_label.text = message
+		article_label.text = GameState.result_fail_text
+
+		result_label.visible = false
+
+		update_system_control_label()
+
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
+		level_failed.emit()
+		return
+
 	result_label.modulate = Color(0.58, 0.0, 0.0)
-	result_label.text = message
+	result_label.text = GameState.result_fail_text
 	result_label.visible = true
-	GameState.add_system_control(10)
+
 	update_system_control_label()
-	await get_tree().create_timer(fail_freeze_time).timeout
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -406,37 +510,17 @@ func update_timer_label():
 
 
 func update_system_control_label_position():
-	if control_label == null or not is_instance_valid(control_label):
-		return
-	control_label.position = Vector2(window_size.x - 340, 8)
-	control_label.text = GameState.get_system_control_text()
+	LevelUtils.update_system_control_label(control_label, Vector2(window_size.x - 340, 8))
 
 
 func update_system_control_label():
-	if control_label != null and is_instance_valid(control_label):
-		control_label.text = GameState.get_system_control_text()
-
-
-func style_green_button(button: Button):
-	button.add_theme_stylebox_override("normal", make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12)))
-	button.add_theme_stylebox_override("hover", make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15)))
-	button.add_theme_stylebox_override("pressed", make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08)))
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func style_red_button(button: Button):
-	button.add_theme_stylebox_override("normal", make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04)))
-	button.add_theme_stylebox_override("hover", make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05)))
-	button.add_theme_stylebox_override("pressed", make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02)))
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 16)
+	LevelUtils.refresh_system_control_label(control_label)
 
 
 func style_cell(button: Button):
-	button.add_theme_stylebox_override("normal", make_button_style(Color(0.98, 0.98, 0.96), Color(0.42, 0.50, 0.70)))
-	button.add_theme_stylebox_override("hover", make_button_style(Color(0.90, 0.95, 1.0), Color(0.20, 0.40, 0.72)))
-	button.add_theme_stylebox_override("pressed", make_button_style(Color(0.78, 0.88, 1.0), Color(0.20, 0.40, 0.72)))
+	button.add_theme_stylebox_override("normal", LevelUtils.make_grid_button_style(Color(0.98, 0.98, 0.96), Color(0.42, 0.50, 0.70)))
+	button.add_theme_stylebox_override("hover", LevelUtils.make_grid_button_style(Color(0.90, 0.95, 1.0), Color(0.20, 0.40, 0.72)))
+	button.add_theme_stylebox_override("pressed", LevelUtils.make_grid_button_style(Color(0.78, 0.88, 1.0), Color(0.20, 0.40, 0.72)))
 	button.add_theme_color_override("font_color", Color(0.18, 0.25, 0.50))
 	button.add_theme_font_size_override("font_size", 16)
 
@@ -449,21 +533,6 @@ func make_panel_style() -> StyleBoxFlat:
 	sb.border_width_top = 3
 	sb.border_width_right = 3
 	sb.border_width_bottom = 3
-	sb.corner_radius_top_left = 8
-	sb.corner_radius_top_right = 8
-	sb.corner_radius_bottom_left = 8
-	sb.corner_radius_bottom_right = 8
-	return sb
-
-
-func make_button_style(bg: Color, border: Color) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 2
-	sb.border_width_top = 2
-	sb.border_width_right = 2
-	sb.border_width_bottom = 2
 	sb.corner_radius_top_left = 8
 	sb.corner_radius_top_right = 8
 	sb.corner_radius_bottom_left = 8

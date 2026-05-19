@@ -1,15 +1,15 @@
 [gd_scene format=3 uid="uid://dlx3bywhqnpe"]
 
-[ext_resource type="Script" uid="uid://dksqmhexzwhf" path="res://levels/level_6.gd" id="1_0xt1q"]
+[ext_resource type="Script" uid="uid://chgsjj1hll6p0" path="res://levels/level_6.gd" id="1_0xt1q"]
 
-[node name="Level6" type="Node2D"]
+[node name="Level6" type="Node2D" unique_id=990369054]
 script = ExtResource("1_0xt1q")
 
-[node name="ColorRect" type="ColorRect" parent="."]
+[node name="ColorRect" type="ColorRect" parent="." unique_id=688293524]
 offset_right = 856.0
 offset_bottom = 520.0
 
-[node name="NoButton" type="Button" parent="."]
+[node name="NoButton" type="Button" parent="." unique_id=1971598408]
 offset_left = 589.0
 offset_top = 370.0
 offset_right = 729.0

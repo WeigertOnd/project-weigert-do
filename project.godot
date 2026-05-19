@@ -13,7 +13,8 @@ config_version=5
 config/name="Project_Weigert_Do"
 run/main_scene="uid://dkfutysuq2e8i"
 config/features=PackedStringArray("4.6", "Forward Plus")
-config/icon="res://icon.svg"
+boot_splash/image="uid://bfbbswnex3khl"
+config/icon="uid://bfbbswnex3khl"
 
 [autoload]
 

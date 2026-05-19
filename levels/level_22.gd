@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -28,7 +28,6 @@ var code_value = ""
 var time_left = 12.0
 var completed = false
 var failed = false
-var fail_freeze_time = 0.8
 
 
 func _ready():
@@ -78,11 +77,10 @@ func _process(delta):
 
 
 func setup_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 	background.z_index = -100
 
-	if article_label == null or not is_instance_valid(article_label):
+	if not LevelUtils.is_valid_node(article_label):
 		article_label = Label.new()
 		article_label.name = "ArticleLabel"
 		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -93,7 +91,7 @@ func setup_ui():
 		article_label.z_index = 10
 		add_child(article_label)
 
-	if article_agree_button == null or not is_instance_valid(article_agree_button):
+	if not LevelUtils.is_valid_node(article_agree_button):
 		article_agree_button = Button.new()
 		article_agree_button.text = "Souhlasím"
 		article_agree_button.focus_mode = Control.FOCUS_NONE
@@ -101,7 +99,7 @@ func setup_ui():
 		article_agree_button.pressed.connect(_on_article_agree_pressed)
 		add_child(article_agree_button)
 
-	if article_no_button == null or not is_instance_valid(article_no_button):
+	if not LevelUtils.is_valid_node(article_no_button):
 		article_no_button = Button.new()
 		article_no_button.text = "Nesouhlasím"
 		article_no_button.focus_mode = Control.FOCUS_NONE
@@ -109,7 +107,7 @@ func setup_ui():
 		article_no_button.pressed.connect(_on_article_no_pressed)
 		add_child(article_no_button)
 
-	if instruction_label == null or not is_instance_valid(instruction_label):
+	if not LevelUtils.is_valid_node(instruction_label):
 		instruction_label = Label.new()
 		instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		instruction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -119,7 +117,7 @@ func setup_ui():
 		instruction_label.z_index = 20
 		add_child(instruction_label)
 
-	if code_label == null or not is_instance_valid(code_label):
+	if not LevelUtils.is_valid_node(code_label):
 		code_label = Label.new()
 		code_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		code_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -128,7 +126,7 @@ func setup_ui():
 		code_label.z_index = 20
 		add_child(code_label)
 
-	if countdown_label == null or not is_instance_valid(countdown_label):
+	if not LevelUtils.is_valid_node(countdown_label):
 		countdown_label = Label.new()
 		countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		countdown_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -137,7 +135,7 @@ func setup_ui():
 		countdown_label.z_index = 20
 		add_child(countdown_label)
 
-	if input_box == null or not is_instance_valid(input_box):
+	if not LevelUtils.is_valid_node(input_box):
 		input_box = LineEdit.new()
 		input_box.placeholder_text = "Opiš kód"
 		input_box.alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -146,7 +144,7 @@ func setup_ui():
 		input_box.text_changed.connect(_on_input_changed)
 		add_child(input_box)
 
-	if result_label == null or not is_instance_valid(result_label):
+	if not LevelUtils.is_valid_node(result_label):
 		result_label = Label.new()
 		result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -154,7 +152,7 @@ func setup_ui():
 		result_label.z_index = 20
 		add_child(result_label)
 
-	if control_label == null or not is_instance_valid(control_label):
+	if not LevelUtils.is_valid_node(control_label):
 		control_label = Label.new()
 		control_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		control_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -164,8 +162,8 @@ func setup_ui():
 		control_label.z_index = 25
 		add_child(control_label)
 
-	style_green_button(article_agree_button)
-	style_red_button(article_no_button)
+	LevelUtils.style_green_button(article_agree_button)
+	LevelUtils.style_red_button(article_no_button)
 	layout_ui()
 
 
@@ -174,7 +172,7 @@ func show_article_screen():
 	background.color = Color(0.96, 0.96, 0.92)
 	article_label.visible = true
 	article_label.modulate = Color(0.10, 0.10, 0.10)
-	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	article_label.text = LevelUtils.get_article_text(article_number)
 	article_no_button.visible = true
 	article_no_button.disabled = false
 	article_agree_button.visible = true
@@ -211,8 +209,7 @@ func set_game_visible(visible: bool):
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 
 	if screen_state == "article":
 		article_label.position = Vector2(70, 30)
@@ -277,32 +274,42 @@ func complete_level():
 	input_box.editable = false
 	background.color = Color(0.84, 0.94, 0.84)
 	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = "Kód opsán včas."
+	result_label.text = GameState.result_success_text
 	result_label.visible = true
-	GameState.reduce_system_control(5)
 	update_system_control_label()
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
 func fail_level(message: String):
 	if failed:
 		return
+
 	failed = true
 	background.color = Color(0.95, 0.82, 0.82)
+
 	if screen_state == "article":
 		article_no_button.disabled = true
 		article_agree_button.disabled = true
+
 		article_label.modulate = Color(0.58, 0.0, 0.0)
-		article_label.text = message
-	else:
-		input_box.editable = false
+		article_label.text = GameState.result_fail_text
+
+		result_label.visible = false
+
+		update_system_control_label()
+
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
+		level_failed.emit()
+		return
+
 	result_label.modulate = Color(0.58, 0.0, 0.0)
-	result_label.text = message
+	result_label.text = GameState.result_fail_text
 	result_label.visible = true
-	GameState.add_system_control(10)
+
 	update_system_control_label()
-	await get_tree().create_timer(fail_freeze_time).timeout
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -311,43 +318,8 @@ func update_countdown():
 
 
 func update_system_control_label_position():
-	if control_label == null or not is_instance_valid(control_label):
-		return
-	control_label.position = Vector2(window_size.x - 340, 8)
-	control_label.text = GameState.get_system_control_text()
+	LevelUtils.update_system_control_label(control_label, Vector2(window_size.x - 340, 8))
 
 
 func update_system_control_label():
-	if control_label != null and is_instance_valid(control_label):
-		control_label.text = GameState.get_system_control_text()
-
-
-func style_green_button(button: Button):
-	button.add_theme_stylebox_override("normal", make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12)))
-	button.add_theme_stylebox_override("hover", make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15)))
-	button.add_theme_stylebox_override("pressed", make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08)))
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func style_red_button(button: Button):
-	button.add_theme_stylebox_override("normal", make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04)))
-	button.add_theme_stylebox_override("hover", make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05)))
-	button.add_theme_stylebox_override("pressed", make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02)))
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func make_button_style(bg: Color, border: Color) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 2
-	sb.border_width_top = 2
-	sb.border_width_right = 2
-	sb.border_width_bottom = 2
-	sb.corner_radius_top_left = 8
-	sb.corner_radius_top_right = 8
-	sb.corner_radius_bottom_left = 8
-	sb.corner_radius_bottom_right = 8
-	return sb
+	LevelUtils.refresh_system_control_label(control_label)

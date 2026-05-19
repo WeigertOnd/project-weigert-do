@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -20,7 +20,7 @@ var memory_buttons = []
 var correct_button_index = -1
 
 var reveal_time = 1.5
-var shuffle_steps = 25
+var shuffle_steps = 20
 var shuffle_delay = 0.45
 var is_shuffling = false
 var can_choose = false
@@ -90,7 +90,7 @@ func show_article_screen():
 
 	text_label.visible = true
 	text_label.modulate = Color(0.10, 0.10, 0.10)
-	text_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	text_label.text = LevelUtils.get_article_text(article_number)
 
 	agree_button.visible = true
 	no_button.visible = true
@@ -100,8 +100,8 @@ func show_article_screen():
 	agree_button.text = "Souhlasím"
 	no_button.text = "Nesouhlasím"
 
-	style_green_button(agree_button)
-	style_red_button(no_button)
+	LevelUtils.style_green_button(agree_button)
+	LevelUtils.style_red_button(no_button)
 
 	layout_ui()
 
@@ -150,10 +150,10 @@ func create_memory_buttons():
 
 		if i == correct_button_index:
 			btn.text = "Souhlasím"
-			style_green_button(btn)
+			LevelUtils.style_green_button(btn)
 		else:
 			btn.text = "Nesouhlasím"
-			style_red_button(btn)
+			LevelUtils.style_red_button(btn)
 
 		btn.pressed.connect(Callable(self, "_on_memory_button_pressed").bind(btn))
 		add_child(btn)
@@ -254,17 +254,19 @@ func _on_memory_button_pressed(btn: Button):
 
 	if selected_is_correct:
 		btn.text = "Souhlasím"
-		style_green_button(btn)
+		LevelUtils.style_green_button(btn)
 
 		text_label.modulate = Color(0.05, 0.38, 0.10)
-		await get_tree().create_timer(1.2).timeout
+		text_label.text = GameState.result_success_text
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
 		level_finished.emit()
 	else:
 		btn.text = "Nesouhlasím"
-		style_red_button(btn)
+		LevelUtils.style_red_button(btn)
 
 		text_label.modulate = Color(0.55, 0.0, 0.0)
-		await get_tree().create_timer(1.4).timeout
+		text_label.text = GameState.result_fail_text
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
 		level_failed.emit()
 
 
@@ -274,15 +276,15 @@ func reveal_all_memory_buttons():
 
 		if i == correct_button_index:
 			btn.text = "Souhlasím"
-			style_green_button(btn)
+			LevelUtils.style_green_button(btn)
 		else:
 			btn.text = "Nesouhlasím"
-			style_red_button(btn)
+			LevelUtils.style_red_button(btn)
 
 
 func clear_memory_buttons():
 	for btn in memory_buttons:
-		if btn != null and is_instance_valid(btn):
+		if LevelUtils.is_valid_node(btn):
 			btn.queue_free()
 
 	memory_buttons.clear()
@@ -295,8 +297,7 @@ func _process(_delta):
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 
 	if screen_state == "article":
 		text_label.position = Vector2(70, 40)
@@ -331,41 +332,20 @@ func _on_agree_pressed():
 
 
 func _on_no_pressed():
+	agree_button.disabled = true
+	no_button.disabled = true
+
+	text_label.modulate = Color(0.58, 0.0, 0.0)
+	text_label.text = GameState.result_fail_text
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
-func style_green_button(button: Button):
-	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
-	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
-	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 17)
-
-
-func style_red_button(button: Button):
-	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
-	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
-	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_font_size_override("font_size", 17)
-
-
 func style_hidden_button(button: Button):
-	var normal = make_button_style(Color(0.74, 0.74, 0.70), Color(0.42, 0.44, 0.48), 7)
-	var hover = make_button_style(Color(0.82, 0.82, 0.78), Color(0.25, 0.34, 0.58), 7)
-	var pressed = make_button_style(Color(0.62, 0.62, 0.60), Color(0.28, 0.30, 0.34), 7)
+	var normal = LevelUtils.make_button_style(Color(0.74, 0.74, 0.70), Color(0.42, 0.44, 0.48), 7)
+	var hover = LevelUtils.make_button_style(Color(0.82, 0.82, 0.78), Color(0.25, 0.34, 0.58), 7)
+	var pressed = LevelUtils.make_button_style(Color(0.62, 0.62, 0.60), Color(0.28, 0.30, 0.34), 7)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
@@ -374,18 +354,3 @@ func style_hidden_button(button: Button):
 	button.add_theme_color_override("font_hover_color", Color(0.10, 0.10, 0.10))
 	button.add_theme_color_override("font_pressed_color", Color(0.05, 0.05, 0.05))
 	button.add_theme_font_size_override("font_size", 16)
-
-
-func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.corner_radius_top_left = radius
-	sb.corner_radius_top_right = radius
-	sb.corner_radius_bottom_left = radius
-	sb.corner_radius_bottom_right = radius
-	return sb

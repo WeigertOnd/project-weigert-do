@@ -1,6 +1,6 @@
 extends Node2D
 
-const ArticleData = preload("res://data/ArticleData.gd")
+const LevelUtils = preload("res://levels/LevelUtils.gd")
 
 signal level_finished
 signal level_failed
@@ -38,7 +38,6 @@ var required_similarity = 92.0
 
 var attempts = 0
 var max_attempts = 5
-var fail_freeze_time = 1.0
 
 
 func _ready():
@@ -96,7 +95,7 @@ func setup_ui():
 	check_button.z_index = 5
 	agree_button.z_index = 5
 
-	if article_label == null or not is_instance_valid(article_label):
+	if not LevelUtils.is_valid_node(article_label):
 		article_label = Label.new()
 		article_label.name = "ArticleLabel"
 		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -136,7 +135,7 @@ func show_article_screen():
 
 	article_label.visible = true
 	article_label.modulate = Color(0.10, 0.10, 0.10)
-	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	article_label.text = LevelUtils.get_article_text(article_number)
 
 	target_panel.visible = false
 	preview_panel.visible = false
@@ -151,12 +150,12 @@ func show_article_screen():
 	check_button.visible = true
 	check_button.disabled = false
 	check_button.text = "Nesouhlasím"
-	style_red_button(check_button)
+	LevelUtils.style_red_button(check_button)
 
 	agree_button.visible = true
 	agree_button.disabled = false
 	agree_button.text = "Souhlasím"
-	style_green_button(agree_button)
+	LevelUtils.style_green_button(agree_button)
 
 	layout_ui()
 
@@ -192,12 +191,12 @@ func show_game_screen():
 	check_button.visible = true
 	check_button.disabled = false
 	check_button.text = "Zkontrolovat"
-	style_blue_button(check_button)
+	LevelUtils.style_blue_button(check_button)
 
 	agree_button.visible = true
 	agree_button.disabled = true
 	agree_button.text = "Souhlasím"
-	style_green_button(agree_button)
+	LevelUtils.style_green_button(agree_button)
 
 	result_label.modulate = Color(0.18, 0.18, 0.18)
 	update_result_text()
@@ -213,8 +212,7 @@ func _process(_delta):
 
 
 func layout_ui():
-	background.position = Vector2.ZERO
-	background.size = window_size
+	LevelUtils.layout_background(background, window_size)
 
 	if screen_state == "article":
 		if article_label:
@@ -320,14 +318,13 @@ func _on_check_pressed():
 
 		agree_button.disabled = false
 		agree_button.text = "Souhlasím"
-		style_green_button(agree_button)
+		LevelUtils.style_green_button(agree_button)
 
 		check_button.disabled = true
 
 		result_label.modulate = Color(0.0, 0.50, 0.0)
 		result_label.text = "Dost blízko: " + str(int(similarity)) + " %. Souhlasím odemčeno."
 
-		GameState.reduce_system_control(4)
 	else:
 		attempts += 1
 
@@ -342,7 +339,6 @@ func _on_check_pressed():
 			+ "."
 		)
 
-		GameState.add_system_control(5)
 
 		if attempts >= max_attempts:
 			fail_level_from_game()
@@ -367,9 +363,9 @@ func _on_agree_pressed():
 	background.color = Color(0.84, 0.94, 0.84)
 
 	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = "Přijato."
+	result_label.text = GameState.result_success_text
 
-	await get_tree().create_timer(0.7).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
@@ -385,12 +381,11 @@ func fail_level_from_article():
 	agree_button.disabled = true
 
 	article_label.modulate = Color(0.55, 0.0, 0.0)
-	article_label.text = ("SOUHLAS NEBYL DOKONČEN")
+	article_label.text = GameState.result_fail_text
 
 
-	GameState.add_system_control(8)
 
-	await get_tree().create_timer(fail_freeze_time).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -406,11 +401,10 @@ func fail_level_from_game():
 	agree_button.disabled = true
 
 	result_label.modulate = Color(0.56, 0.0, 0.0)
-	result_label.text = "Pokusy vyčerpány: " + str(attempts) + "/" + str(max_attempts)
+	result_label.text = GameState.result_fail_text
 
-	GameState.add_system_control(10)
 
-	await get_tree().create_timer(fail_freeze_time).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -440,74 +434,3 @@ func get_similarity() -> float:
 
 func rgb_color(r: int, g: int, b: int) -> Color:
 	return Color(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0)
-
-
-func style_blue_button(button: Button):
-	var normal = make_button_style(Color(0.20, 0.50, 0.85), Color(0.10, 0.30, 0.70), 7)
-	var hover = make_button_style(Color(0.30, 0.65, 1.0), Color(0.15, 0.40, 0.80), 7)
-	var pressed = make_button_style(Color(0.15, 0.35, 0.70), Color(0.08, 0.20, 0.55), 7)
-	var disabled = make_button_style(Color(0.46, 0.52, 0.60), Color(0.28, 0.32, 0.40), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-
-	button.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
-	button.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
-	button.add_theme_color_override("font_pressed_color", Color(0.9, 0.9, 0.9))
-	button.add_theme_color_override("font_disabled_color", Color(0.78, 0.82, 0.88))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func style_green_button(button: Button):
-	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
-	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
-	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
-	var disabled = make_button_style(Color(0.52, 0.62, 0.52), Color(0.32, 0.42, 0.32), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func style_red_button(button: Button):
-	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
-	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
-	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
-	var disabled = make_button_style(Color(0.62, 0.48, 0.48), Color(0.42, 0.30, 0.30), 7)
-
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-
-	button.add_theme_color_override("font_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
-	button.add_theme_font_size_override("font_size", 16)
-
-
-func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.corner_radius_top_left = radius
-	sb.corner_radius_top_right = radius
-	sb.corner_radius_bottom_left = radius
-	sb.corner_radius_bottom_right = radius
-	sb.shadow_color = Color(1, 1, 1, 0.20)
-	sb.shadow_size = 1
-	return sb
