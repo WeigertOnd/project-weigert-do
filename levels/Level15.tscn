@@ -1,10 +1,10 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bl2cjm73ob21k"]
 
-[ext_resource type="Script" path="res://levels/level_15.gd" id="1_level15"]
+[ext_resource type="Script" uid="uid://c80ot6gcduwu6" path="res://levels/level_15.gd" id="1_level15"]
 
-[node name="Level15" type="Node2D"]
+[node name="Level15" type="Node2D" unique_id=739682317]
 script = ExtResource("1_level15")
 
-[node name="ColorRect" type="ColorRect" parent="."]
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1043651110]
 offset_right = 856.0
 offset_bottom = 520.0

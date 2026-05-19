@@ -1,21 +1,28 @@
 extends Node2D
 
+const ArticleData = preload("res://data/ArticleData.gd")
+
 signal level_finished
+signal level_failed
 
 @onready var background = $ColorRect
 @onready var no_button = $NoButton
+
+var article_label: Label
+var agree_button: Button
 
 var control_label: Label
 var title_label: Label
 var score_label: Label
 var status_label: Label
 var target_label: Label
-var left_flipper_button: Button
-var right_flipper_button: Button
 var launch_button: Button
 
 var window_size = Vector2(856, 520)
 var last_window_size = Vector2.ZERO
+
+var article_number = 1
+var screen_state = "article"
 
 var score = 0
 var target_score = 500
@@ -66,6 +73,13 @@ func _ready():
 	start_level()
 
 
+func set_article_number(new_article_number: int):
+	article_number = new_article_number
+
+	if is_inside_tree():
+		start_level()
+
+
 func set_window_size(new_size):
 	if window_size == new_size:
 		return
@@ -77,10 +91,13 @@ func set_window_size(new_size):
 
 
 func start_level():
+	screen_state = "article"
+
 	score = 0
 	balls_left = 3
 	unlocked = false
 	ball_launched = false
+
 	left_flipper_active = false
 	right_flipper_active = false
 	left_flipper_held = false
@@ -99,6 +116,7 @@ func start_level():
 	setup_bumpers()
 	reset_ball()
 	update_labels()
+	show_article_screen()
 	queue_redraw()
 
 
@@ -106,6 +124,10 @@ func _process(delta):
 	if last_window_size != window_size:
 		last_window_size = window_size
 		layout_ui()
+
+	if screen_state != "pinball":
+		queue_redraw()
+		return
 
 	update_system_control_label_position()
 	update_flippers(delta)
@@ -118,6 +140,9 @@ func _process(delta):
 
 
 func _input(event):
+	if screen_state != "pinball":
+		return
+
 	if not (event is InputEventKey) or event.echo:
 		return
 
@@ -128,6 +153,7 @@ func _input(event):
 		else:
 			left_flipper_held = false
 			left_flipper_active = false
+
 	elif event.keycode == KEY_RIGHT:
 		if event.pressed:
 			right_flipper_held = true
@@ -135,6 +161,7 @@ func _input(event):
 		else:
 			right_flipper_held = false
 			right_flipper_active = false
+
 	elif event.pressed and (event.keycode == KEY_SPACE or event.keycode == KEY_ENTER):
 		_on_launch_pressed()
 
@@ -142,7 +169,26 @@ func _input(event):
 func setup_ui():
 	background.color = Color(0.96, 0.96, 0.92)
 	background.z_index = -10
-	no_button.z_index = 20
+	no_button.z_index = 30
+
+	if article_label == null or not is_instance_valid(article_label):
+		article_label = Label.new()
+		article_label.name = "ArticleLabel"
+		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		article_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		article_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		article_label.add_theme_font_size_override("font_size", 18)
+		article_label.modulate = Color(0.10, 0.10, 0.10)
+		article_label.z_index = 40
+		add_child(article_label)
+
+	if agree_button == null or not is_instance_valid(agree_button):
+		agree_button = Button.new()
+		agree_button.name = "AgreeButton"
+		agree_button.text = "Souhlasím"
+		agree_button.z_index = 40
+		agree_button.pressed.connect(_on_article_agree_pressed)
+		add_child(agree_button)
 
 	if title_label == null or not is_instance_valid(title_label):
 		title_label = Label.new()
@@ -195,41 +241,14 @@ func setup_ui():
 		control_label.z_index = 25
 		add_child(control_label)
 
-	if left_flipper_button == null or not is_instance_valid(left_flipper_button):
-		left_flipper_button = Button.new()
-		left_flipper_button.name = "LeftFlipperButton"
-		left_flipper_button.text = "←"
-		left_flipper_button.z_index = 30
-		style_blue_button(left_flipper_button)
-		left_flipper_button.button_down.connect(_on_left_flipper_down)
-		left_flipper_button.button_up.connect(_on_left_flipper_up)
-		left_flipper_button.pressed.connect(_on_left_flipper_pressed)
-		add_child(left_flipper_button)
-
-	if right_flipper_button == null or not is_instance_valid(right_flipper_button):
-		right_flipper_button = Button.new()
-		right_flipper_button.name = "RightFlipperButton"
-		right_flipper_button.text = "→"
-		right_flipper_button.z_index = 30
-		style_blue_button(right_flipper_button)
-		right_flipper_button.button_down.connect(_on_right_flipper_down)
-		right_flipper_button.button_up.connect(_on_right_flipper_up)
-		right_flipper_button.pressed.connect(_on_right_flipper_pressed)
-		add_child(right_flipper_button)
-
 	if launch_button == null or not is_instance_valid(launch_button):
 		launch_button = Button.new()
 		launch_button.name = "LaunchButton"
-		launch_button.text = "START"
+		launch_button.text = "Výstřel"
 		launch_button.z_index = 30
 		style_blue_button(launch_button)
 		launch_button.pressed.connect(_on_launch_pressed)
 		add_child(launch_button)
-
-	no_button.text = "Zamčeno"
-	no_button.disabled = true
-	no_button.visible = true
-	style_button_soft_xp(no_button)
 
 	if not no_button.pressed.is_connected(_on_no_pressed):
 		no_button.pressed.connect(_on_no_pressed)
@@ -238,13 +257,95 @@ func setup_ui():
 	update_system_control_label()
 
 
+func show_article_screen():
+	screen_state = "article"
+
+	background.color = Color(0.96, 0.96, 0.92)
+
+	article_label.visible = true
+	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+
+	agree_button.visible = true
+	agree_button.disabled = false
+	agree_button.text = "Souhlasím"
+	style_green_button(agree_button)
+
+	no_button.visible = true
+	no_button.disabled = false
+	no_button.text = "Nesouhlasím"
+	style_red_button(no_button)
+
+	title_label.visible = false
+	score_label.visible = false
+	target_label.visible = false
+	status_label.visible = false
+	control_label.visible = false
+
+	if launch_button:
+		launch_button.visible = false
+
+	layout_ui()
+	queue_redraw()
+
+
+func show_pinball_screen():
+	screen_state = "pinball"
+
+	article_label.visible = false
+	agree_button.visible = false
+
+	title_label.visible = true
+	score_label.visible = true
+	target_label.visible = true
+	status_label.visible = true
+	control_label.visible = true
+
+	if launch_button:
+		launch_button.visible = true
+		launch_button.disabled = false
+		launch_button.text = "Výstřel"
+		style_blue_button(launch_button)
+
+	no_button.visible = true
+	no_button.disabled = true
+	no_button.text = "Souhlasím"
+	style_button_soft_xp(no_button)
+
+	score = 0
+	balls_left = 3
+	unlocked = false
+	ball_launched = false
+
+	reset_ball()
+	update_labels()
+	layout_ui()
+	queue_redraw()
+
+
+func _on_article_agree_pressed():
+	show_pinball_screen()
+
+
 func layout_ui():
 	background.position = Vector2.ZERO
 	background.size = window_size
 
+	if screen_state == "article":
+		if article_label:
+			article_label.position = Vector2(70, 40)
+			article_label.size = Vector2(window_size.x - 140, window_size.y - 145)
+
+		if agree_button:
+			agree_button.size = Vector2(180, 44)
+			agree_button.position = Vector2(window_size.x / 2.0 + 40, window_size.y - 68)
+
+		no_button.size = Vector2(180, 44)
+		no_button.position = Vector2(window_size.x / 2.0 - 220, window_size.y - 68)
+		return
+
 	title_label.position = Vector2(230, 18)
 	title_label.size = Vector2(396, 28)
-	title_label.text = "PINBALL NESOUHLASU"
+	title_label.text = "PINBALL SOUHLASU"
 
 	score_label.position = Vector2(44, 50)
 	score_label.size = Vector2(240, 30)
@@ -252,20 +353,15 @@ func layout_ui():
 	target_label.position = Vector2(window_size.x / 2 - 170, 48)
 	target_label.size = Vector2(340, 34)
 
-	status_label.position = Vector2(window_size.x / 2 - 250, 76)
-	status_label.size = Vector2(500, 28)
+	status_label.position = Vector2(window_size.x / 2 - 260, 76)
+	status_label.size = Vector2(520, 42)
 
-	left_flipper_button.size = Vector2(110, 44)
-	left_flipper_button.position = Vector2(window_size.x / 2 - 210, window_size.y - 62)
+	if launch_button:
+		launch_button.size = Vector2(130, 42)
+		launch_button.position = Vector2(window_size.x / 2.0 - 65, window_size.y - 64)
 
-	launch_button.size = Vector2(110, 44)
-	launch_button.position = Vector2(window_size.x / 2 - 55, window_size.y - 62)
-
-	right_flipper_button.size = Vector2(110, 44)
-	right_flipper_button.position = Vector2(window_size.x / 2 + 100, window_size.y - 62)
-
-	no_button.size = Vector2(162, 42)
-	no_button.position = Vector2(window_size.x - 202, window_size.y - 64)
+	no_button.size = Vector2(180, 42)
+	no_button.position = Vector2(window_size.x - 220, window_size.y - 64)
 
 	update_system_control_label_position()
 
@@ -298,6 +394,7 @@ func setup_bumpers():
 		{"position": playfield.position + Vector2(playfield.size.x * 0.34, 304), "radius": 4.0},
 		{"position": playfield.position + Vector2(playfield.size.x * 0.66, 304), "radius": 4.0},
 	]
+
 	bumper_flash.clear()
 
 
@@ -308,8 +405,9 @@ func reset_ball():
 	launcher_stuck_time = 0.0
 	ball_stuck_time = 0.0
 	last_ball_position = ball_position
-	launch_button.disabled = unlocked
-	status_label.text = "START vystřelí kuličku. Šipky ← → ovládají páčky."
+
+	if launch_button:
+		launch_button.disabled = unlocked
 
 
 func update_flippers(delta):
@@ -318,11 +416,13 @@ func update_flippers(delta):
 
 	if flipper_timer_left > 0:
 		flipper_timer_left -= delta
+
 		if flipper_timer_left <= 0 and not left_flipper_held:
 			left_flipper_active = false
 
 	if flipper_timer_right > 0:
 		flipper_timer_right -= delta
+
 		if flipper_timer_right <= 0 and not right_flipper_held:
 			right_flipper_active = false
 
@@ -360,6 +460,7 @@ func integrate_ball(delta):
 	ball_position += ball_velocity * delta
 
 	handle_wall_collisions()
+
 	if handle_launcher_lane_recovery(delta):
 		return
 
@@ -496,8 +597,10 @@ func reset_launcher_after_weak_shot():
 	launcher_stuck_time = 0.0
 	ball_stuck_time = 0.0
 	last_ball_position = ball_position
-	launch_button.disabled = unlocked
-	status_label.text = "Výstřel byl slabý. Zkus START znovu."
+	status_label.text = "Výstřel byl slabý. Zkus Výstřel / SPACE znovu."
+
+	if launch_button:
+		launch_button.disabled = unlocked
 
 
 func release_ball_from_launcher(lane_x: float, lane_gate_y: float):
@@ -573,6 +676,7 @@ func handle_single_flipper_collision(points: Array, active: bool, swing_speed: f
 		return
 
 	var normal = to_ball.normalized()
+
 	if normal == Vector2.ZERO:
 		normal = Vector2.UP
 
@@ -623,9 +727,17 @@ func drain_ball():
 	update_system_control_label()
 
 	if balls_left <= 0 and not unlocked:
-		status_label.text = "Kuličky došly. Automat restartuje skóre."
-		score = max(0, score - 350)
-		balls_left = 3
+		ball_launched = false
+
+		if launch_button:
+			launch_button.disabled = true
+
+		status_label.text = "Kuličky došly. Nepodařilo se získat 500 skóre."
+		score_label.text = "Skóre: %d\nKuličky: 0" % score
+
+		await get_tree().create_timer(1.4).timeout
+		level_failed.emit()
+		return
 
 	reset_ball()
 	update_labels()
@@ -645,10 +757,14 @@ func add_score(amount):
 func unlock_no_button():
 	unlocked = true
 	ball_launched = false
-	no_button.text = "Nesouhlasím"
+
+	no_button.text = "Souhlasím"
 	no_button.disabled = false
-	launch_button.disabled = true
-	status_label.text = "Skóre dosaženo. NESOUHLASÍM je odemčeno."
+	style_green_button(no_button)
+
+	if launch_button:
+		launch_button.disabled = true
+
 	GameState.reduce_system_control(5)
 	update_system_control_label()
 	update_labels()
@@ -659,6 +775,7 @@ func update_bumper_flash(delta):
 
 	for key in bumper_flash.keys():
 		bumper_flash[key] -= delta
+
 		if bumper_flash[key] <= 0:
 			expired.append(key)
 
@@ -668,11 +785,7 @@ func update_bumper_flash(delta):
 
 func update_labels():
 	score_label.text = "Skóre: %d\nKuličky: %d" % [score, balls_left]
-	target_label.text = "Cíl: %d bodů pro odemčení NESOUHLASÍM" % target_score
-
-	if not unlocked and status_label.text == "":
-		status_label.text = "Nahraj skóre a odemkni tlačítko."
-
+	target_label.text = "Cíl: %d bodů pro odemčení SOUHLASÍM" % target_score
 
 func get_playfield_rect() -> Rect2:
 	var width = min(500.0, window_size.x - 300.0)
@@ -689,11 +802,6 @@ func get_flipper_drain_gap() -> Vector2:
 	var left_tip_x = left_pivot_x + cos(deg_to_rad(-9.0)) * flipper_length
 	var right_tip_x = right_pivot_x + cos(deg_to_rad(189.0)) * flipper_length
 	return Vector2(left_tip_x + 2.0, right_tip_x - 2.0)
-
-
-func get_lower_side_guard_y() -> float:
-	var playfield = get_playfield_rect()
-	return playfield.position.y + playfield.size.y - 50.0
 
 
 func get_lower_side_guard_segments() -> Array:
@@ -720,12 +828,18 @@ func get_lower_side_guard_segments() -> Array:
 
 func get_launch_position() -> Vector2:
 	var playfield = get_playfield_rect()
-	return Vector2(playfield.position.x + playfield.size.x - launcher_lane_width / 2.0, playfield.position.y + playfield.size.y - 70.0)
+	return Vector2(
+		playfield.position.x + playfield.size.x - launcher_lane_width / 2.0,
+		playfield.position.y + playfield.size.y - 70.0
+	)
 
 
 func get_left_flipper_points() -> Array:
 	var playfield = get_playfield_rect()
-	var pivot = Vector2(playfield.position.x + flipper_pivot_offset, playfield.position.y + playfield.size.y - 48.0)
+	var pivot = Vector2(
+		playfield.position.x + flipper_pivot_offset,
+		playfield.position.y + playfield.size.y - 48.0
+	)
 	var angle = lerp(deg_to_rad(-9.0), deg_to_rad(-38.0), left_flipper_lift)
 	var tip = pivot + Vector2(cos(angle), sin(angle)) * flipper_length
 	return [pivot, tip]
@@ -733,13 +847,19 @@ func get_left_flipper_points() -> Array:
 
 func get_right_flipper_points() -> Array:
 	var playfield = get_playfield_rect()
-	var pivot = Vector2(playfield.position.x + playfield.size.x - flipper_pivot_offset, playfield.position.y + playfield.size.y - 48.0)
+	var pivot = Vector2(
+		playfield.position.x + playfield.size.x - flipper_pivot_offset,
+		playfield.position.y + playfield.size.y - 48.0
+	)
 	var angle = lerp(deg_to_rad(189.0), deg_to_rad(218.0), right_flipper_lift)
 	var tip = pivot + Vector2(cos(angle), sin(angle)) * flipper_length
 	return [pivot, tip]
 
 
 func _on_launch_pressed():
+	if screen_state != "pinball":
+		return
+
 	if unlocked or ball_launched:
 		return
 
@@ -749,36 +869,9 @@ func _on_launch_pressed():
 	launcher_stuck_time = 0.0
 	ball_stuck_time = 0.0
 	last_ball_position = ball_position
-	launch_button.disabled = true
-	status_label.text = "Šipky ← → ovládají páčky."
 
-
-func _on_left_flipper_pressed():
-	activate_left_flipper()
-
-
-func _on_left_flipper_down():
-	left_flipper_held = true
-	activate_left_flipper()
-
-
-func _on_left_flipper_up():
-	left_flipper_held = false
-	left_flipper_active = false
-
-
-func _on_right_flipper_pressed():
-	activate_right_flipper()
-
-
-func _on_right_flipper_down():
-	right_flipper_held = true
-	activate_right_flipper()
-
-
-func _on_right_flipper_up():
-	right_flipper_held = false
-	right_flipper_active = false
+	if launch_button:
+		launch_button.disabled = true
 
 
 func activate_left_flipper():
@@ -792,6 +885,13 @@ func activate_right_flipper():
 
 
 func _on_no_pressed():
+	if screen_state == "article":
+		level_failed.emit()
+		return
+
+	if screen_state != "pinball":
+		return
+
 	if not unlocked:
 		return
 
@@ -812,6 +912,9 @@ func update_system_control_label():
 
 
 func _draw():
+	if screen_state != "pinball":
+		return
+
 	draw_playfield()
 	draw_bumpers()
 	draw_posts()
@@ -827,6 +930,7 @@ func draw_playfield():
 	var drain_gap = get_flipper_drain_gap()
 	var guard_segments = get_lower_side_guard_segments()
 	var outer = Rect2(panel.position - Vector2(12, 10), panel.size + Vector2(24, 20))
+
 	var xp_blue = Color(0.18, 0.48, 0.92)
 	var xp_blue_light = Color(0.58, 0.78, 1.0)
 	var field_light = Color(0.86, 0.94, 1.0)
@@ -845,12 +949,14 @@ func draw_playfield():
 		panel.position + Vector2(panel.size.x * 0.34, 14.0),
 		panel.position + Vector2(panel.size.x * 0.43, panel.size.y - 8.0),
 	], Color(0.76, 0.88, 1.0))
+
 	draw_poly([
 		panel.position + Vector2(panel.size.x * 0.50, panel.size.y - 8.0),
 		panel.position + Vector2(panel.size.x * 0.66, 14.0),
 		panel.position + Vector2(panel.size.x - 18.0, 14.0),
 		panel.position + Vector2(panel.size.x * 0.57, panel.size.y - 8.0),
 	], Color(0.64, 0.80, 1.0))
+
 	draw_poly([
 		panel.position + Vector2(panel.size.x * 0.43, 0.0),
 		panel.position + Vector2(panel.size.x * 0.57, 0.0),
@@ -867,6 +973,7 @@ func draw_playfield():
 		panel.position + Vector2(18.0, panel.size.y - 24.0),
 		panel.position + Vector2(8.0, panel.size.y - 24.0),
 	], Color(0.16, 0.38, 0.82))
+
 	draw_poly([
 		panel.position + Vector2(panel.size.x - 8.0, 14.0),
 		panel.position + Vector2(panel.size.x - 70.0, 14.0),
@@ -876,12 +983,14 @@ func draw_playfield():
 		panel.position + Vector2(panel.size.x - 18.0, panel.size.y - 24.0),
 		panel.position + Vector2(panel.size.x - 8.0, panel.size.y - 24.0),
 	], Color(0.16, 0.38, 0.82))
+
 	draw_poly([
 		panel.position + Vector2(20.0, 72.0),
 		panel.position + Vector2(48.0, 96.0),
 		panel.position + Vector2(45.0, 168.0),
 		panel.position + Vector2(28.0, 184.0),
 	], field_deep)
+
 	draw_poly([
 		panel.position + Vector2(panel.size.x - 20.0, 72.0),
 		panel.position + Vector2(panel.size.x - 48.0, 96.0),
@@ -891,11 +1000,13 @@ func draw_playfield():
 
 	draw_line(Vector2(panel.position.x, bottom_y), Vector2(drain_gap.x, bottom_y), Color(0.70, 0.72, 0.76), 2.0)
 	draw_line(Vector2(drain_gap.y, bottom_y), Vector2(panel.position.x + panel.size.x, bottom_y), Color(0.70, 0.72, 0.76), 2.0)
+
 	draw_rect(
 		Rect2(Vector2(drain_gap.x, bottom_y - 7), Vector2(drain_gap.y - drain_gap.x, 14)),
 		Color(0.12, 0.13, 0.14, 0.22),
 		true
 	)
+
 	for guard in guard_segments:
 		draw_line(guard[0], guard[1], Color(0.88, 0.88, 0.92), 5.0)
 		draw_line(guard[0], guard[1], Color(0.52, 0.50, 0.72), 2.0)
@@ -912,8 +1023,19 @@ func draw_playfield():
 	draw_mini_flipper(panel.position + Vector2(68.0, 56.0), deg_to_rad(58.0))
 	draw_mini_flipper(panel.position + Vector2(panel.size.x - 58.0, 72.0), deg_to_rad(-28.0))
 
-	draw_line(Vector2(lane_x, panel.position.y + launcher_lane_gap_height), Vector2(lane_x, panel.position.y + panel.size.y - 14), Color(0.10, 0.11, 0.14), 6.0)
-	draw_line(Vector2(lane_x + 4.0, panel.position.y + launcher_lane_gap_height), Vector2(lane_x + 4.0, panel.position.y + panel.size.y - 18), Color(0.48, 0.50, 0.58), 2.0)
+	draw_line(
+		Vector2(lane_x, panel.position.y + launcher_lane_gap_height),
+		Vector2(lane_x, panel.position.y + panel.size.y - 14),
+		Color(0.10, 0.11, 0.14),
+		6.0
+	)
+	draw_line(
+		Vector2(lane_x + 4.0, panel.position.y + launcher_lane_gap_height),
+		Vector2(lane_x + 4.0, panel.position.y + panel.size.y - 18),
+		Color(0.48, 0.50, 0.58),
+		2.0
+	)
+
 	draw_arc(Vector2(lane_x + 15, panel.position.y + launcher_lane_gap_height), 15, PI, PI * 1.5, 16, Color(0.70, 0.72, 0.78), 2.0)
 	draw_plunger_meter(panel, lane_x)
 	draw_circle(launcher, 13, Color(0.82, 0.86, 0.92))
@@ -945,18 +1067,21 @@ func draw_center_badge(center: Vector2):
 		center + Vector2(45.0, 18.0),
 		center + Vector2(-45.0, 18.0),
 	], Color(0.24, 0.72, 0.52))
+
 	draw_poly([
 		center + Vector2(-50.0, -10.0),
 		center + Vector2(50.0, -10.0),
 		center + Vector2(39.0, 10.0),
 		center + Vector2(-39.0, 10.0),
 	], Color(0.80, 0.94, 0.84))
+
 	draw_line(center + Vector2(-38.0, 0.0), center + Vector2(38.0, 0.0), Color(0.92, 0.25, 0.40), 4.0)
 
 
 func draw_arrow_stack(center: Vector2):
 	for i in range(3):
 		var y = center.y + i * 25.0
+
 		draw_poly([
 			Vector2(center.x - 24.0, y + 10.0),
 			Vector2(center.x, y - 8.0),
@@ -965,6 +1090,7 @@ func draw_arrow_stack(center: Vector2):
 			Vector2(center.x, y + 8.0),
 			Vector2(center.x - 17.0, y + 20.0),
 		], Color(0.28, 0.82, 0.56))
+
 		draw_line(Vector2(center.x - 18.0, y + 11.0), Vector2(center.x, y - 2.0), Color(0.86, 1.0, 0.90), 2.0)
 		draw_line(Vector2(center.x, y - 2.0), Vector2(center.x + 18.0, y + 11.0), Color(0.86, 1.0, 0.90), 2.0)
 
@@ -973,6 +1099,7 @@ func draw_mini_flipper(center: Vector2, angle: float):
 	var direction = Vector2(cos(angle), sin(angle))
 	var start = center - direction * 15.0
 	var end = center + direction * 15.0
+
 	draw_line(start, end, Color(0.70, 0.90, 1.0), 10.0)
 	draw_line(start, end, Color(0.16, 0.62, 0.82), 6.0)
 	draw_circle(start, 4.0, Color(0.82, 0.88, 0.94))
@@ -981,11 +1108,14 @@ func draw_mini_flipper(center: Vector2, angle: float):
 
 func draw_plunger_meter(panel: Rect2, lane_x: float):
 	var meter = Rect2(Vector2(lane_x + 27.0, panel.position.y + panel.size.y - 86.0), Vector2(10.0, 74.0))
+
 	draw_rect(meter.grow(2.0), Color(0.88, 0.88, 0.84), true)
 	draw_rect(meter, Color(0.07, 0.08, 0.10), true)
+
 	for i in range(8):
 		var y = meter.position.y + 6.0 + i * 8.0
 		draw_line(Vector2(meter.position.x + 1.0, y), Vector2(meter.position.x + meter.size.x - 1.0, y), Color(0.70, 0.78, 0.88), 1.0)
+
 	draw_circle(Vector2(meter.position.x + meter.size.x / 2.0, meter.position.y + meter.size.y + 13.0), 8.0, Color(0.92, 0.12, 0.25))
 
 
@@ -996,6 +1126,7 @@ func draw_bumpers():
 		Color(0.98, 0.28, 0.58),
 		Color(0.24, 0.75, 0.96),
 	]
+
 	var index = 0
 
 	for bumper in bumpers:
@@ -1011,6 +1142,7 @@ func draw_bumpers():
 		draw_circle(center, radius - 2.0, accent)
 		draw_circle(center + Vector2(-4, -5), radius * 0.28, Color(1, 1, 1, 0.70))
 		draw_arc(center, radius + 2.0, 0, PI * 2, 40, Color(0.20, 0.12, 0.18), 2.0)
+
 		index += 1
 
 
@@ -1026,6 +1158,7 @@ func draw_posts():
 		draw_circle(center, radius, Color(0.92, 0.93, 0.95))
 		draw_circle(center, radius * 0.66, body)
 		draw_circle(center + Vector2(-2, -2), radius * 0.35, Color(1.0, 1.0, 1.0, 0.78))
+
 		index += 1
 
 
@@ -1043,10 +1176,13 @@ func draw_star(center: Vector2, outer_radius: float, inner_radius: float, points
 func draw_flippers():
 	var active_color = Color(1.0, 0.28, 0.34)
 	var idle_color = Color(0.88, 0.18, 0.22)
+
 	var left_color = active_color if left_flipper_active else idle_color
 	var right_color = active_color if right_flipper_active else idle_color
+
 	var left_points = get_left_flipper_points()
 	var right_points = get_right_flipper_points()
+
 	var left_pivot = left_points[0]
 	var left_tip = left_points[1]
 	var right_pivot = right_points[0]
@@ -1056,6 +1192,7 @@ func draw_flippers():
 	draw_line(right_pivot, right_tip, Color(0.92, 0.92, 0.90), 15.0)
 	draw_line(left_pivot, left_tip, left_color, 8.0)
 	draw_line(right_pivot, right_tip, right_color, 8.0)
+
 	draw_circle(left_pivot, 9, Color(0.96, 0.96, 0.94))
 	draw_circle(right_pivot, 9, Color(0.96, 0.96, 0.94))
 	draw_circle(left_pivot, 4, Color(0.70, 0.73, 0.80))
@@ -1098,11 +1235,40 @@ func style_blue_button(button):
 	button.add_theme_stylebox_override("hover", hover)
 	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_stylebox_override("disabled", disabled)
+
 	button.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
 	button.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
 	button.add_theme_color_override("font_pressed_color", Color(0.9, 0.9, 0.9))
 	button.add_theme_color_override("font_disabled_color", Color(0.78, 0.82, 0.88))
 	button.add_theme_font_size_override("font_size", 14)
+
+
+func style_green_button(button: Button):
+	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
+	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
+	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
+
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_color_override("font_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+	button.add_theme_font_size_override("font_size", 17)
+
+
+func style_red_button(button: Button):
+	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
+	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
+	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
+
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_color_override("font_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+	button.add_theme_font_size_override("font_size", 17)
 
 
 func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
