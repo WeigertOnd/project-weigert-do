@@ -20,7 +20,7 @@ var memory_buttons = []
 var correct_button_index = -1
 
 var reveal_time = 1.5
-var shuffle_steps = 25
+var shuffle_steps = 20
 var shuffle_delay = 0.45
 var is_shuffling = false
 var can_choose = false
@@ -257,14 +257,16 @@ func _on_memory_button_pressed(btn: Button):
 		style_green_button(btn)
 
 		text_label.modulate = Color(0.05, 0.38, 0.10)
-		await get_tree().create_timer(1.2).timeout
+		text_label.text = GameState.result_success_text
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
 		level_finished.emit()
 	else:
 		btn.text = "Nesouhlasím"
 		style_red_button(btn)
 
 		text_label.modulate = Color(0.55, 0.0, 0.0)
-		await get_tree().create_timer(1.4).timeout
+		text_label.text = GameState.result_fail_text
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
 		level_failed.emit()
 
 
@@ -331,6 +333,13 @@ func _on_agree_pressed():
 
 
 func _on_no_pressed():
+	agree_button.disabled = true
+	no_button.disabled = true
+
+	text_label.modulate = Color(0.58, 0.0, 0.0)
+	text_label.text = GameState.result_fail_text
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 

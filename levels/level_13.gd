@@ -79,6 +79,7 @@ func start_level():
 
 	result_label.visible = true
 	result_label.modulate = Color(0.12, 0.12, 0.12)
+	result_label.text = ""
 
 	choose_correct_button_position()
 	create_button_stacks()
@@ -135,7 +136,7 @@ func layout_ui():
 		article_label.size = Vector2(window_size.x - 140, 230)
 
 	if result_label:
-		result_label.position = Vector2(70, 260)
+		result_label.position = Vector2(70, 315)
 		result_label.size = Vector2(window_size.x - 140, 34)
 
 	left_stack_x = 160.0
@@ -257,15 +258,16 @@ func complete_level():
 	background.color = Color(0.84, 0.94, 0.84)
 
 	result_label.modulate = Color(0.0, 0.50, 0.0)
+	result_label.text = GameState.result_success_text
+	result_label.visible = true
 
 	for button in buttons:
 		if button and is_instance_valid(button):
 			button.disabled = true
 
-	GameState.reduce_system_control(5)
 	update_system_control_label()
 
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
@@ -279,15 +281,16 @@ func fail_level():
 	background.color = Color(0.95, 0.82, 0.82)
 
 	result_label.modulate = Color(0.58, 0.0, 0.0)
+	result_label.text = GameState.result_fail_text
+	result_label.visible = true
 
 	for button in buttons:
 		if button and is_instance_valid(button):
 			button.disabled = true
 
-	GameState.add_system_control(8)
 	update_system_control_label()
 
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 

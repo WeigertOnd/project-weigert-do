@@ -26,13 +26,12 @@ var target_center = Vector2(428, 250)
 var target_radius = 140.0
 var rotation_angle = 0.0
 var rotation_speed = 9.2
-var green_fraction = 0.10
+var green_fraction = 0.13
 var cursor_pos = Vector2.ZERO
 var cursor_time = 0.0
 var completed = false
 var failed = false
 var attempts_left = 2
-var fail_freeze_time = 0.8
 
 
 func _ready():
@@ -332,19 +331,22 @@ func check_click():
 
 func fail_click():
 	attempts_left -= 1
-	GameState.add_system_control(8)
+	update_attempts_label()
 	update_system_control_label()
+
 	background.color = Color(0.95, 0.82, 0.82)
 	result_label.modulate = Color(0.58, 0.0, 0.0)
 	result_label.visible = true
 
 	if attempts_left <= 0:
+		result_label.text = GameState.result_fail_text
 		fail_level("Druhý pokus minul zelenou část.")
 		return
 
-	update_attempts_label()
 	result_label.text = "Mimo. Zbývá 1 pokus."
+
 	await get_tree().create_timer(0.35).timeout
+
 	if not completed and not failed:
 		background.color = Color(0.96, 0.96, 0.92)
 
@@ -352,21 +354,32 @@ func fail_click():
 func fail_level(message: String):
 	if failed:
 		return
+
 	failed = true
 	background.color = Color(0.95, 0.82, 0.82)
 
 	if screen_state == "article":
 		article_no_button.disabled = true
 		article_agree_button.disabled = true
+
 		article_label.modulate = Color(0.58, 0.0, 0.0)
-		article_label.text = message
+		article_label.text = GameState.result_fail_text
+
+		result_label.visible = false
+
+		update_system_control_label()
+
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
+		level_failed.emit()
+		return
 
 	result_label.modulate = Color(0.58, 0.0, 0.0)
-	result_label.text = message
+	result_label.text = GameState.result_fail_text
 	result_label.visible = true
-	GameState.add_system_control(10)
+
 	update_system_control_label()
-	await get_tree().create_timer(fail_freeze_time).timeout
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -374,11 +387,10 @@ func complete_level():
 	completed = true
 	background.color = Color(0.84, 0.94, 0.84)
 	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = "Trefa."
+	result_label.text = GameState.result_success_text
 	result_label.visible = true
-	GameState.reduce_system_control(5)
 	update_system_control_label()
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 

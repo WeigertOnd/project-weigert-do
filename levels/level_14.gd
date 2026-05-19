@@ -282,16 +282,16 @@ func complete_level():
 	background.color = Color(0.84, 0.94, 0.84)
 
 	result_label.modulate = Color(0.0, 0.50, 0.0)
+	result_label.text = GameState.result_success_text
 	result_label.visible = true
 
 	for btn in buttons:
 		if btn and is_instance_valid(btn):
 			btn.disabled = true
 
-	GameState.reduce_system_control(5)
 	update_system_control_label()
 
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
@@ -305,16 +305,16 @@ func fail_level():
 	background.color = Color(0.95, 0.82, 0.82)
 
 	result_label.modulate = Color(0.58, 0.0, 0.0)
+	result_label.text = GameState.result_fail_text
 	result_label.visible = true
 
 	for btn in buttons:
 		if btn and is_instance_valid(btn):
 			btn.disabled = true
 
-	GameState.add_system_control(8)
 	update_system_control_label()
 
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 

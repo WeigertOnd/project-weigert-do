@@ -194,11 +194,13 @@ func _on_agree_pressed():
 	agree_button.text = "Nesouhlasím"
 	no_button.text = "Souhlasím"
 
+	article_label.modulate = Color(0.58, 0.0, 0.0)
+	article_label.text = GameState.result_fail_text
+
 	flash_time = 0.0
 
-	GameState.add_system_control(8)
 
-	await get_tree().create_timer(1.4).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -217,10 +219,11 @@ func _on_no_pressed():
 	no_button.text = "Souhlasím"
 
 	background.color = Color(0.84, 0.94, 0.84)
+	article_label.modulate = Color(0.0, 0.50, 0.0)
+	article_label.text = GameState.result_success_text
 
-	GameState.reduce_system_control(5)
 
-	await get_tree().create_timer(1.2).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 

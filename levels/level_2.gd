@@ -145,8 +145,6 @@ func generate_secret_code() -> String:
 	for i in range(code_length):
 		code += str(randi_range(0, 9))
 
-	print("kód: ", code)
-
 	return code
 
 
@@ -202,15 +200,9 @@ func check_guess():
 
 	if current_guess == secret_code:
 		text_label.modulate = Color(0.05, 0.38, 0.10)
-		text_label.text = (
-			"OVĚŘENÍ SOUHLASU\n\n"
-			+ "Kód byl správně zadán.\n\n"
-			+ "Zadaný kód: " + current_guess + "\n"
-			+ "Počet pokusů: " + str(attempts) + "\n\n"
-			+ "Souhlas byl ověřen."
-		)
+		text_label.text = GameState.result_success_text
 
-		await get_tree().create_timer(1.4).timeout
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
 		level_finished.emit()
 		return
 
@@ -235,14 +227,9 @@ func check_guess():
 
 func show_fail_screen():
 	text_label.modulate = Color(0.55, 0.0, 0.0)
-	text_label.text = (
-		"OVĚŘENÍ SOUHLASU\n\n"
-		+ "Limit pokusů byl vyčerpán.\n\n"
-		+ "Počet pokusů: " + str(attempts) + "/" + str(max_attempts) + "\n\n"
-		+ "Pro pokračování musíte souhlasit se všemi podmínkami."
-	)
+	text_label.text = GameState.result_fail_text
 
-	await get_tree().create_timer(1.8).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -367,6 +354,13 @@ func _on_agree_pressed():
 
 func _on_no_pressed():
 	if screen_state == "article":
+		agree_button.disabled = true
+		no_button.disabled = true
+
+		text_label.modulate = Color(0.58, 0.0, 0.0)
+		text_label.text = GameState.result_fail_text
+
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
 		level_failed.emit()
 
 

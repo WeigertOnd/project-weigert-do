@@ -28,7 +28,6 @@ var code_value = ""
 var time_left = 12.0
 var completed = false
 var failed = false
-var fail_freeze_time = 0.8
 
 
 func _ready():
@@ -277,32 +276,42 @@ func complete_level():
 	input_box.editable = false
 	background.color = Color(0.84, 0.94, 0.84)
 	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = "Kód opsán včas."
+	result_label.text = GameState.result_success_text
 	result_label.visible = true
-	GameState.reduce_system_control(5)
 	update_system_control_label()
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
 func fail_level(message: String):
 	if failed:
 		return
+
 	failed = true
 	background.color = Color(0.95, 0.82, 0.82)
+
 	if screen_state == "article":
 		article_no_button.disabled = true
 		article_agree_button.disabled = true
+
 		article_label.modulate = Color(0.58, 0.0, 0.0)
-		article_label.text = message
-	else:
-		input_box.editable = false
+		article_label.text = GameState.result_fail_text
+
+		result_label.visible = false
+
+		update_system_control_label()
+
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
+		level_failed.emit()
+		return
+
 	result_label.modulate = Color(0.58, 0.0, 0.0)
-	result_label.text = message
+	result_label.text = GameState.result_fail_text
 	result_label.visible = true
-	GameState.add_system_control(10)
+
 	update_system_control_label()
-	await get_tree().create_timer(fail_freeze_time).timeout
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 

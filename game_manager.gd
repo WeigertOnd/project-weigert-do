@@ -1,8 +1,36 @@
 extends Node2D
 
+const ARTICLE_ONE_LEVEL_CONFIG = {
+	"path": "res://levels/Level0.tscn",
+	"title": "Souhlasíte s článkem 1"
+}
+
+const LEVEL_CONFIGS = [
+	{"path": "res://levels/Level1.tscn", "title": "Utíkající souhlas"},
+	{"path": "res://levels/Level2.tscn", "title": "Kód"},
+	{"path": "res://levels/Level3.tscn", "title": "Běhání"},
+	{"path": "res://levels/Level4.tscn", "title": "Najdi souhlas"},
+	{"path": "res://levels/Level5.tscn", "title": "Létající souhlas"},
+	{"path": "res://levels/Level6.tscn", "title": "Hledání min"},
+	{"path": "res://levels/Level7.tscn", "title": "Pinball"},
+	{"path": "res://levels/Level8.tscn", "title": "Prohozený souhlas"},
+	{"path": "res://levels/Level9.tscn", "title": "Pumpa souhlasu"},
+	{"path": "res://levels/Level10.tscn", "title": "Reakce"},
+	{"path": "res://levels/Level11.tscn", "title": "Odhad času"},
+	{"path": "res://levels/Level12.tscn", "title": "Odhad barvy"},
+	{"path": "res://levels/Level13.tscn", "title": "Překrytý souhlas"},
+	{"path": "res://levels/Level14.tscn", "title": "Fronta souhlasů"},
+	{"path": "res://levels/Level15.tscn", "title": "Neviditelný nesouhlas"},
+	{"path": "res://levels/Level16.tscn", "title": "Utíkající nesouhlas"},
+	{"path": "res://levels/Level17.tscn", "title": "Automat"},
+	{"path": "res://levels/Level18.tscn", "title": "Počet kuliček"},
+	{"path": "res://levels/Level19.tscn", "title": "Bodovací kulička"},
+	{"path": "res://levels/Level20.tscn", "title": "Terč nesouhlasu"},
+	{"path": "res://levels/Level21.tscn", "title": "Hledání slova"},
+	{"path": "res://levels/Level22.tscn", "title": "Autentizační kód"}
+]
+
 var current_level = null
-var current_level_path = ""
-var current_level_finished_function = Callable()
 
 # permanent desktop
 var desktop_background
@@ -33,20 +61,7 @@ var popup_button = null
 var popup_label = null
 var popup_title = null
 
-# system monitor window
-var monitor_shadow
-var monitor_window
-var monitor_title_bar
-var monitor_title_glow
-var monitor_title_label
-var monitor_content
-var monitor_label
-var monitor_bar_background
-var monitor_bar_fill
-var monitor_percent_label
-
 var clock_timer = 0.0
-var bonus_level_launch_pending = false
 var highest_unlocked_article = 1
 var current_article_number = 1
 var used_random_levels = []
@@ -71,12 +86,7 @@ func _ready():
 
 	randomize()
 
-	if not GameState.system_control_maxed.is_connected(_on_system_control_maxed):
-		GameState.system_control_maxed.connect(_on_system_control_maxed)
-
-	if GameState.has_signal("system_control_changed"):
-		if not GameState.system_control_changed.is_connected(_on_system_control_changed):
-			GameState.system_control_changed.connect(_on_system_control_changed)
+	GameState.max_selectable_level = get_level_count()
 
 	build_desktop()
 	layout_desktop()
@@ -215,7 +225,6 @@ func build_desktop():
 
 	start_menu_title = Label.new()
 	start_menu_title.name = "StartMenuTitle"
-	start_menu_title.text = "I Agree?"
 	start_menu_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	start_menu_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	start_menu_title.add_theme_font_size_override("font_size", 16)
@@ -455,203 +464,6 @@ func update_start_menu_buttons():
 
 
 # =========================================================
-# SYSTEM MONITOR WINDOW
-# =========================================================
-
-func build_system_monitor():
-	monitor_shadow = Panel.new()
-	monitor_shadow.name = "SystemMonitorShadow"
-	monitor_shadow.visible = false
-	monitor_shadow.z_index = 20
-	monitor_shadow.add_theme_stylebox_override("panel", make_monitor_shadow_style())
-	add_child(monitor_shadow)
-
-	monitor_window = Panel.new()
-	monitor_window.name = "SystemMonitorWindow"
-	monitor_window.visible = false
-	monitor_window.z_index = 21
-	monitor_window.add_theme_stylebox_override("panel", make_monitor_window_style())
-	add_child(monitor_window)
-
-	monitor_title_bar = Panel.new()
-	monitor_title_bar.name = "SystemMonitorTitleBar"
-	monitor_title_bar.visible = false
-	monitor_title_bar.z_index = 22
-	monitor_title_bar.add_theme_stylebox_override("panel", make_monitor_title_bar_style())
-	add_child(monitor_title_bar)
-
-	monitor_title_glow = ColorRect.new()
-	monitor_title_glow.name = "SystemMonitorTitleGlow"
-	monitor_title_glow.visible = false
-	monitor_title_glow.color = Color(1, 1, 1, 0.18)
-	monitor_title_glow.z_index = 23
-	add_child(monitor_title_glow)
-
-	monitor_title_label = Label.new()
-	monitor_title_label.name = "SystemMonitorTitleLabel"
-	monitor_title_label.visible = false
-	monitor_title_label.text = "System Monitor"
-	monitor_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	monitor_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	monitor_title_label.add_theme_font_size_override("font_size", 13)
-	monitor_title_label.modulate = Color(1, 1, 1)
-	monitor_title_label.z_index = 24
-	add_child(monitor_title_label)
-
-	monitor_content = Panel.new()
-	monitor_content.name = "SystemMonitorContent"
-	monitor_content.visible = false
-	monitor_content.z_index = 22
-	monitor_content.add_theme_stylebox_override("panel", make_monitor_content_style())
-	add_child(monitor_content)
-
-	monitor_bar_background = Panel.new()
-	monitor_bar_background.name = "SystemMonitorBarBackground"
-	monitor_bar_background.visible = false
-	monitor_bar_background.z_index = 24
-	monitor_bar_background.add_theme_stylebox_override("panel", make_monitor_bar_background_style())
-	add_child(monitor_bar_background)
-
-	monitor_bar_fill = ColorRect.new()
-	monitor_bar_fill.name = "SystemMonitorBarFill"
-	monitor_bar_fill.visible = false
-	monitor_bar_fill.color = Color(0.05, 0.35, 0.85)
-	monitor_bar_fill.z_index = 25
-	add_child(monitor_bar_fill)
-
-	monitor_percent_label = Label.new()
-	monitor_percent_label.name = "SystemMonitorPercentLabel"
-	monitor_percent_label.visible = false
-	monitor_percent_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	monitor_percent_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	monitor_percent_label.add_theme_font_size_override("font_size", 13)
-	monitor_percent_label.modulate = Color(0.06, 0.06, 0.06)
-	monitor_percent_label.z_index = 26
-	add_child(monitor_percent_label)
-
-	update_system_monitor()
-
-
-func layout_system_monitor():
-	var screen = get_viewport_rect().size
-	var size = Vector2(260, 138)
-
-	var main_window_size = Vector2(880, 580)
-	var main_window_pos = Vector2(
-		(screen.x - main_window_size.x) / 2,
-		(screen.y - main_window_size.y) / 2 - 22
-	)
-
-	var pos = Vector2(
-		main_window_pos.x + main_window_size.x + 18,
-		main_window_pos.y + 28
-	)
-
-	if pos.x + size.x > screen.x - 18:
-		pos.x = main_window_pos.x - size.x - 18
-
-	if pos.x < 18:
-		pos.x = screen.x - size.x - 18
-		pos.y = main_window_pos.y + main_window_size.y + 16
-
-	if pos.y + size.y > screen.y - 55:
-		pos.y = screen.y - size.y - 58
-
-	if monitor_shadow:
-		monitor_shadow.position = pos + Vector2(7, 8)
-		monitor_shadow.size = size
-
-	if monitor_window:
-		monitor_window.position = pos
-		monitor_window.size = size
-
-	if monitor_title_bar:
-		monitor_title_bar.position = pos + Vector2(4, 4)
-		monitor_title_bar.size = Vector2(size.x - 8, 30)
-
-	if monitor_title_glow:
-		monitor_title_glow.position = pos + Vector2(6, 6)
-		monitor_title_glow.size = Vector2(size.x - 12, 11)
-
-	if monitor_title_label:
-		monitor_title_label.position = pos + Vector2(14, 7)
-		monitor_title_label.size = Vector2(size.x - 28, 21)
-
-	if monitor_content:
-		monitor_content.position = pos + Vector2(8, 40)
-		monitor_content.size = Vector2(size.x - 16, size.y - 50)
-
-	if monitor_bar_background:
-		monitor_bar_background.position = pos + Vector2(22, 84)
-		monitor_bar_background.size = Vector2(size.x - 44, 24)
-
-	update_system_monitor()
-
-
-func show_system_monitor():
-	set_system_monitor_visible(true)
-	update_system_monitor()
-
-
-func hide_system_monitor():
-	set_system_monitor_visible(false)
-
-
-func set_system_monitor_visible(value):
-	if monitor_shadow:
-		monitor_shadow.visible = value
-	if monitor_window:
-		monitor_window.visible = value
-	if monitor_title_bar:
-		monitor_title_bar.visible = value
-	if monitor_title_glow:
-		monitor_title_glow.visible = value
-	if monitor_title_label:
-		monitor_title_label.visible = value
-	if monitor_content:
-		monitor_content.visible = value
-	if monitor_label:
-		monitor_label.visible = value
-	if monitor_bar_background:
-		monitor_bar_background.visible = value
-	if monitor_bar_fill:
-		monitor_bar_fill.visible = value
-	if monitor_percent_label:
-		monitor_percent_label.visible = value
-
-
-func update_system_monitor():
-	if monitor_bar_background == null or not is_instance_valid(monitor_bar_background):
-		return
-
-	var percent = GameState.system_control
-	var ratio = clamp(float(percent) / float(GameState.max_system_control), 0.0, 1.0)
-
-	var bar_pos = monitor_bar_background.position
-	var bar_size = monitor_bar_background.size
-
-	if monitor_bar_fill:
-		monitor_bar_fill.position = bar_pos + Vector2(3, 3)
-		monitor_bar_fill.size = Vector2((bar_size.x - 6) * ratio, bar_size.y - 6)
-
-		if percent < 50:
-			monitor_bar_fill.color = Color(0.05, 0.35, 0.85)
-		elif percent < 80:
-			monitor_bar_fill.color = Color(0.95, 0.55, 0.05)
-		else:
-			monitor_bar_fill.color = Color(0.85, 0.05, 0.05)
-
-	if monitor_percent_label:
-		monitor_percent_label.position = bar_pos
-		monitor_percent_label.size = bar_size
-		monitor_percent_label.text = str(percent) + " %"
-
-
-func _on_system_control_changed(_new_value):
-	update_system_monitor()
-
-
-# =========================================================
 # START MENU
 # =========================================================
 
@@ -765,7 +577,7 @@ func _on_tos_read_pressed(article_number: int):
 	current_article_number = article_number
 
 	if article_number == 1:
-		start_level_0()
+		start_article_one_level()
 		return
 
 	var level_number = get_or_create_random_level_for_article(article_number)
@@ -778,7 +590,7 @@ func get_or_create_random_level_for_article(article_number: int) -> int:
 
 	var available_levels = []
 
-	for level_number in range(1, 23):
+	for level_number in range(1, get_level_count() + 1):
 		if not used_random_levels.has(level_number):
 			available_levels.append(level_number)
 
@@ -793,6 +605,48 @@ func get_or_create_random_level_for_article(article_number: int) -> int:
 	article_to_level[article_number] = selected_level
 
 	return selected_level
+
+
+func get_level_count() -> int:
+	return LEVEL_CONFIGS.size()
+
+
+func get_level_config(level_number: int) -> Dictionary:
+	if level_number < 1 or level_number > get_level_count():
+		return {}
+
+	return LEVEL_CONFIGS[level_number - 1]
+
+
+func get_level_select_label(level_number: int) -> String:
+	var config = get_level_config(level_number)
+
+	if config.is_empty():
+		return "Level " + str(level_number)
+
+	return "Level %d: %s" % [level_number, String(config["title"])]
+
+
+func start_article_one_level():
+	load_level(
+		String(ARTICLE_ONE_LEVEL_CONFIG["path"]),
+		String(ARTICLE_ONE_LEVEL_CONFIG["title"]),
+		Callable(self, "finish_level_and_return_to_select").bind(0)
+	)
+
+
+func start_configured_level(level_number: int):
+	var config = get_level_config(level_number)
+
+	if config.is_empty():
+		return
+
+	load_level(
+		String(config["path"]),
+		String(config["title"]),
+		Callable(self, "finish_level_and_return_to_select").bind(level_number)
+	)
+
 
 func make_tos_list_style() -> StyleBoxFlat:
 	var sb = StyleBoxFlat.new()
@@ -815,7 +669,6 @@ func start_new_game():
 	show_tos_articles_screen()
 
 func reset_tos_game_progress():
-	GameState.reset_system_control()
 	GameState.reset_level_progress()
 	highest_unlocked_article = 1
 	current_article_number = 1
@@ -843,8 +696,6 @@ func show_level_select_menu(show_all_levels: bool = false):
 	if popup_button:
 		popup_button.position = Vector2(size.x / 2 - 105, 462)
 
-	var level_names = ["Level 1: Utíkající souhlas", "Level 2: Kód", "Level 3: Běhání", "Level 4: Najdi souhlas", "Level 5: Létající souhlas", "Level 6: Hledání min", "Level 7: Pinball", "Level 8: Prohozený souhlas", "Level 9: Pumpa nesouhlasu", "Level 10: Reakce", "Level 11: Odhad času", "Level 12: Odhad barvy", "Level 13: Překrytý souhlas", "Level 14: Fronta souhlasů", "Level 15: Neviditelný nesouhlas", "Level 16: Utíkající nesouhlas", "Level 17: Automat", "Level 18: Počet kuliček", "Level 19: Bodovací kulička", "Level 20: Terč nesouhlasu", "Level 21: Hledání slova"]
-	level_names.append("Level 22: Autentizační kód")
 	var start_y = 66
 	var button_width = 300
 	var button_height = 30
@@ -852,13 +703,13 @@ func show_level_select_menu(show_all_levels: bool = false):
 	var column_spacing = 22
 	var columns = 2
 
-	for i in range(1, 23):
+	for i in range(1, get_level_count() + 1):
 		var column = (i - 1) % columns
 		var row = floori(float(i - 1) / float(columns))
 		var total_width = button_width * columns + column_spacing
 		var level_button = Button.new()
 		level_button.name = "LevelButton" + str(i)
-		level_button.text = level_names[i - 1]
+		level_button.text = get_level_select_label(i)
 		level_button.position = Vector2(size.x / 2 - total_width / 2 + column * (button_width + column_spacing), start_y + row * (button_height + button_spacing))
 		level_button.size = Vector2(button_width, button_height)
 		style_window_button(level_button)
@@ -908,8 +759,6 @@ func clear_window_content():
 			child.queue_free()
 
 	current_level = null
-	current_level_path = ""
-	current_level_finished_function = Callable()
 	popup_button = null
 	popup_label = null
 	popup_title = null
@@ -917,13 +766,17 @@ func clear_window_content():
 	update_start_menu_buttons()
 
 
-func load_level(level_path: String, title: String, finished_function: Callable):
+func get_level_window_title(window_title_text: String, use_article_title: bool) -> String:
+	if use_article_title:
+		return "Souhlasíte s článkem " + str(current_article_number)
+
+	return window_title_text
+
+
+func load_level(level_path: String, window_title_text: String, finished_function: Callable, use_article_title: bool = true):
 	clear_window_content()
 	show_game_window()
-	set_window_title("Souhlasíte s článkem " + str(current_article_number))
-
-	current_level_path = level_path
-	current_level_finished_function = finished_function
+	set_window_title(get_level_window_title(window_title_text, use_article_title))
 
 	if not ResourceLoader.exists(level_path):
 		show_popup_window(
@@ -1009,15 +862,6 @@ func show_popup_window(window_title_text: String, body_text: String, button_text
 	update_start_menu_buttons()
 
 
-func show_old_final_screen():
-	show_popup_window(
-		"NESOUHLAS PŘIJAT",
-		"Gratuluji.\nDostal ses ke skutečnému NESOUHLASÍM.\n\nKontrola systému: " + str(GameState.system_control) + " %",
-		"Zpět na plochu",
-		Callable(self, "go_to_desktop")
-	)
-
-
 func show_final_screen():
 	show_popup_window(
 		"Podmínky odsouhlaseny",
@@ -1061,6 +905,11 @@ func _on_retry_download_pressed():
 # =========================================================
 
 func fail_tos_game():
+	if testing_level_mode:
+		testing_level_mode = false
+		show_level_select_menu(true)
+		return
+
 	show_popup_window(
 		"Souhlas nebyl dokončen",
 		"Pro pokračování musíte souhlasit se všemi podmínkami.",
@@ -1068,100 +917,9 @@ func fail_tos_game():
 		Callable(self, "_on_fail_restart_pressed")
 	)
 
-
 func _on_fail_restart_pressed():
 	reset_tos_game_progress()
 	show_tos_articles_screen()
-
-func start_level_0():
-	load_level("res://levels/Level0.tscn", "Souhlasíte s článkem 1", Callable(self, "_on_level_0_finished"))
-
-func start_level_1():
-	load_level("res://levels/Level1.tscn", "Souhlas s podmínkami", Callable(self, "_on_level_1_finished"))
-
-
-func start_level_2():
-	load_level("res://levels/Level2.tscn", "Nastavení soukromí", Callable(self, "_on_level_2_finished"))
-
-
-func start_level_3():
-	load_level("res://levels/Level3.tscn", "Ověření identity", Callable(self, "_on_level_3_finished"))
-
-
-func start_level_4():
-	load_level("res://levels/Level4.tscn", "Žádost o smazání dat", Callable(self, "_on_level_4_finished"))
-
-
-func start_level_5():
-	load_level("res://levels/Level5.tscn", "Finální test", Callable(self, "_on_level_5_finished"))
-
-
-func start_level_6():
-	load_level("res://levels/Level6.tscn", "Tahací automat", Callable(self, "_on_level_6_finished"))
-
-
-func start_level_7():
-	load_level("res://levels/Level7.tscn", "Pinball nesouhlasu", Callable(self, "_on_level_7_finished"))
-
-
-func start_level_8():
-	load_level("res://levels/Level8.tscn", "Prohozený souhlas", Callable(self, "_on_level_8_finished"))
-
-
-func start_level_9():
-	load_level("res://levels/Level9.tscn", "Pumpa nesouhlasu", Callable(self, "_on_level_9_finished"))
-
-
-func start_level_10():
-	load_level("res://levels/Level10.tscn", "Reakce", Callable(self, "_on_level_10_finished"))
-
-
-func start_level_11():
-	load_level("res://levels/Level11.tscn", "Odhad času", Callable(self, "_on_level_11_finished"))
-
-
-func start_level_12():
-	load_level("res://levels/Level12.tscn", "Odhad barvy", Callable(self, "_on_level_12_finished"))
-
-
-func start_level_13():
-	load_level("res://levels/Level13.tscn", "Překrytá okna", Callable(self, "_on_level_13_finished"))
-
-
-func start_level_14():
-	load_level("res://levels/Level14.tscn", "Fronta souhlasů", Callable(self, "_on_level_14_finished"))
-
-
-func start_level_15():
-	load_level("res://levels/Level15.tscn", "Neviditelný nesouhlas", Callable(self, "_on_level_15_finished"))
-
-
-func start_level_16():
-	load_level("res://levels/Level16.tscn", "Utíkající nesouhlas", Callable(self, "_on_level_16_finished"))
-
-
-func start_level_17():
-	load_level("res://levels/Level17.tscn", "Automat", Callable(self, "_on_level_17_finished"))
-
-
-func start_level_18():
-	load_level("res://levels/Level18.tscn", "Počet kuliček", Callable(self, "_on_level_18_finished"))
-
-
-func start_level_19():
-	load_level("res://levels/Level19.tscn", "Bodovací kulička", Callable(self, "_on_level_19_finished"))
-
-
-func start_level_20():
-	load_level("res://levels/Level20.tscn", "Terč nesouhlasu", Callable(self, "_on_level_20_finished"))
-
-
-func start_level_21():
-	load_level("res://levels/Level21.tscn", "Hledání slova", Callable(self, "_on_level_21_finished"))
-
-
-func start_level_22():
-	load_level("res://levels/Level22.tscn", "Paměťový kód", Callable(self, "_on_level_22_finished"))
 
 func finish_level_and_return_to_select(_completed_level: int):
 	if testing_level_mode:
@@ -1181,96 +939,6 @@ func finish_level_and_return_to_select(_completed_level: int):
 
 	show_tos_articles_screen()
 
-func _on_level_0_finished():
-	finish_level_and_return_to_select(0)
-
-func _on_level_1_finished():
-	finish_level_and_return_to_select(1)
-
-
-func _on_level_2_finished():
-	finish_level_and_return_to_select(2)
-
-
-func _on_level_3_finished():
-	finish_level_and_return_to_select(3)
-
-
-func _on_level_4_finished():
-	finish_level_and_return_to_select(4)
-
-
-func _on_level_5_finished():
-	finish_level_and_return_to_select(5)
-
-
-func _on_level_6_finished():
-	finish_level_and_return_to_select(6)
-
-
-func _on_level_7_finished():
-	finish_level_and_return_to_select(7)
-
-
-func _on_level_8_finished():
-	finish_level_and_return_to_select(8)
-
-
-func _on_level_9_finished():
-	finish_level_and_return_to_select(9)
-
-
-func _on_level_10_finished():
-	finish_level_and_return_to_select(10)
-
-
-func _on_level_11_finished():
-	finish_level_and_return_to_select(11)
-
-
-func _on_level_12_finished():
-	finish_level_and_return_to_select(12)
-
-
-func _on_level_13_finished():
-	finish_level_and_return_to_select(13)
-
-
-func _on_level_14_finished():
-	finish_level_and_return_to_select(14)
-
-
-func _on_level_15_finished():
-	finish_level_and_return_to_select(15)
-
-
-func _on_level_16_finished():
-	finish_level_and_return_to_select(16)
-
-
-func _on_level_17_finished():
-	finish_level_and_return_to_select(17)
-
-
-func _on_level_18_finished():
-	finish_level_and_return_to_select(18)
-
-
-func _on_level_19_finished():
-	finish_level_and_return_to_select(19)
-
-
-func _on_level_20_finished():
-	finish_level_and_return_to_select(20)
-
-
-func _on_level_21_finished():
-	finish_level_and_return_to_select(21)
-
-
-func _on_level_22_finished():
-	finish_level_and_return_to_select(22)
-
 # =========================================================
 # DIRECT LEVEL START (for level select menu)
 # =========================================================
@@ -1281,189 +949,10 @@ func start_selected_level_for_testing(level_number: int):
 	start_selected_level(level_number)
 
 func start_selected_level(level_number: int):
-	if level_number < 1 or level_number > 22:
+	if level_number < 1 or level_number > get_level_count():
 		return
 
-	match level_number:
-		1:
-			GameState.reset_system_control()
-			start_level_1()
-		2:
-			start_level_2()
-		3:
-			start_level_3()
-		4:
-			start_level_4()
-		5:
-			start_level_5()
-		6:
-			start_level_6()
-		7:
-			start_level_7()
-		8:
-			start_level_8()
-		9:
-			start_level_9()
-		10:
-			start_level_10()
-		11:
-			start_level_11()
-		12:
-			start_level_12()
-		13:
-			start_level_13()
-		14:
-			start_level_14()
-		15:
-			start_level_15()
-		16:
-			start_level_16()
-		17:
-			start_level_17()
-		18:
-			start_level_18()
-		19:
-			start_level_19()
-		20:
-			start_level_20()
-		21:
-			start_level_21()
-		22:
-			start_level_22()
-
-
-func start_level_1_direct():
-	GameState.reset_system_control()
-	start_level_1()
-
-
-func start_level_2_direct():
-	start_level_2()
-
-
-func start_level_3_direct():
-	start_level_3()
-
-
-func start_level_4_direct():
-	start_level_4()
-
-
-func start_level_5_direct():
-	start_level_5()
-
-
-func start_level_6_direct():
-	start_level_6()
-
-
-func start_level_7_direct():
-	start_level_7()
-
-
-func start_level_8_direct():
-	start_level_8()
-
-
-func start_level_9_direct():
-	start_level_9()
-
-
-func start_level_10_direct():
-	start_level_10()
-
-
-func start_level_11_direct():
-	start_level_11()
-
-
-func start_level_12_direct():
-	start_level_12()
-
-
-func start_level_13_direct():
-	start_level_13()
-
-
-func start_level_14_direct():
-	start_level_14()
-
-
-func start_level_15_direct():
-	start_level_15()
-
-
-func start_level_16_direct():
-	start_level_16()
-
-
-func start_level_17_direct():
-	start_level_17()
-
-
-func start_level_18_direct():
-	start_level_18()
-
-
-func start_level_19_direct():
-	start_level_19()
-
-
-func start_level_20_direct():
-	start_level_20()
-
-
-func start_level_21_direct():
-	start_level_21()
-
-
-func start_level_22_direct():
-	start_level_22()
-
-
-func start_bonus_level_direct():
-	bonus_level_launch_pending = false
-	if ResourceLoader.exists("res://levels/BonusLevel.tscn"):
-		load_level("res://levels/BonusLevel.tscn", "Korekční protokol", Callable(self, "_on_bonus_level_finished"))
-	else:
-		show_popup_window(
-			"CHYBA",
-			"Soubor bonus levelu nebyl nalezen:\nres://levels/BonusLevel.tscn",
-			"Zpět na plochu",
-			Callable(self, "go_to_desktop")
-		)
-
-
-# =========================================================
-# BONUS / SYSTEM CONTROL 100 %
-# =========================================================
-
-func _on_system_control_maxed():
-	if bonus_level_launch_pending:
-		return
-
-	bonus_level_launch_pending = true
-	call_deferred("_start_bonus_level_from_system_control")
-
-
-func _start_bonus_level_from_system_control():
-	bonus_level_launch_pending = false
-	start_menu.visible = false
-
-	if ResourceLoader.exists("res://levels/BonusLevel.tscn"):
-		load_level("res://levels/BonusLevel.tscn", "Korekční protokol", Callable(self, "_on_bonus_level_finished"))
-	else:
-		show_popup_window(
-			"KONTROLA SYSTÉMU 100 %",
-			"Soubor bonus levelu nebyl nalezen:\nres://levels/BonusLevel.tscn\n\nVytvoř BonusLevel.tscn, jinak se bonus nespustí.",
-			"Zpět na plochu",
-			Callable(self, "go_to_desktop")
-		)
-
-
-func _on_bonus_level_finished():
-	GameState.reset_system_control()
-	go_to_desktop()
+	start_configured_level(level_number)
 
 
 # =========================================================
@@ -1554,71 +1043,6 @@ func make_content_style() -> StyleBoxFlat:
 	sb.corner_radius_top_right = 2
 	sb.corner_radius_bottom_left = 6
 	sb.corner_radius_bottom_right = 6
-	return sb
-
-
-func make_monitor_shadow_style() -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0, 0, 0, 0.16)
-	sb.corner_radius_top_left = 10
-	sb.corner_radius_top_right = 10
-	sb.corner_radius_bottom_left = 10
-	sb.corner_radius_bottom_right = 10
-	sb.shadow_color = Color(0, 0, 0, 0.42)
-	sb.shadow_size = 12
-	return sb
-
-
-func make_monitor_window_style() -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.60, 0.78, 1.0)
-	sb.border_width_left = 2
-	sb.border_width_top = 2
-	sb.border_width_right = 2
-	sb.border_width_bottom = 2
-	sb.border_color = Color(0.05, 0.28, 0.72)
-	sb.corner_radius_top_left = 9
-	sb.corner_radius_top_right = 9
-	sb.corner_radius_bottom_left = 7
-	sb.corner_radius_bottom_right = 7
-	return sb
-
-
-func make_monitor_title_bar_style() -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.10, 0.38, 0.86)
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.65, 0.82, 1.0)
-	sb.corner_radius_top_left = 7
-	sb.corner_radius_top_right = 7
-	return sb
-
-
-func make_monitor_content_style() -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.96, 0.96, 0.92)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = Color(0.72, 0.75, 0.80)
-	sb.corner_radius_bottom_left = 5
-	sb.corner_radius_bottom_right = 5
-	return sb
-
-
-func make_monitor_bar_background_style() -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.86, 0.86, 0.84)
-	sb.border_color = Color(0.38, 0.43, 0.52)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.corner_radius_top_left = 4
-	sb.corner_radius_top_right = 4
-	sb.corner_radius_bottom_left = 4
-	sb.corner_radius_bottom_right = 4
 	return sb
 
 

@@ -34,7 +34,6 @@ var auto_fail_time = 18.0
 var timer_fade_start = 5.0
 var timer_fade_duration = 1.2
 
-var fail_freeze_time = 1.0
 
 
 func _ready():
@@ -249,17 +248,16 @@ func fail_level(reason_text: String):
 	start_button.disabled = true
 	agree_button.disabled = true
 
-	timer_label.visible = false
+	hide_final_time()
 
 	result_label.modulate = Color(0.56, 0.0, 0.0)
-	result_label.text = '%s (čas: "%.2f")' % [reason_text, elapsed]
+	result_label.text = "Souhlas nebyl přijat (%.2f s)" % elapsed
 	result_label.visible = true
 
 	instruction_label.text = ""
 
-	GameState.add_system_control(10)
 
-	await get_tree().create_timer(fail_freeze_time).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -275,18 +273,21 @@ func complete_level():
 	start_button.disabled = true
 	agree_button.disabled = true
 
-	timer_label.visible = false
+	hide_final_time()
 
 	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = 'Přijato (čas: "%.2f")' % elapsed
+	result_label.text = "Souhlas byl přijat (%.2f s)" % elapsed
 	result_label.visible = true
 
-	instruction_label.text = "Souhlas byl potvrzen ve správném časovém rozmezí."
+	instruction_label.text = ""
 
-	GameState.reduce_system_control(4)
 
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
+
+
+func hide_final_time():
+	timer_label.visible = false
 
 
 func style_blue_button(button: Button):

@@ -29,10 +29,15 @@ var cols = 18
 var target_letters = ["S", "O", "U", "H", "L", "A", "S", "Í", "M"]
 var allowed_letters = ["S", "O", "U", "H", "L", "A", "Í", "M"]
 var target_cells = []
+
+var max_time = 60.0
 var time_left = 60.0
+
+var max_attempts = 5
+var attempts_left = 5
+
 var completed = false
 var failed = false
-var fail_freeze_time = 0.8
 
 
 func _ready():
@@ -42,6 +47,7 @@ func _ready():
 
 func set_article_number(new_article_number: int):
 	article_number = new_article_number
+
 	if is_inside_tree():
 		start_level()
 
@@ -49,6 +55,7 @@ func set_article_number(new_article_number: int):
 func set_window_size(new_size):
 	if window_size == new_size:
 		return
+
 	window_size = new_size
 	layout_ui()
 	last_window_size = window_size
@@ -58,9 +65,13 @@ func start_level():
 	screen_state = "article"
 	completed = false
 	failed = false
-	time_left = 60.0
+	time_left = max_time
+	attempts_left = max_attempts
+
 	setup_ui()
+
 	background.color = Color(0.96, 0.96, 0.92)
+
 	show_article_screen()
 	update_system_control_label()
 	layout_ui()
@@ -71,15 +82,21 @@ func _process(delta):
 	if last_window_size != window_size:
 		last_window_size = window_size
 		layout_ui()
+
 	update_system_control_label_position()
 
 	if screen_state != "game" or completed or failed:
 		return
 
 	time_left -= delta
-	update_timer_label()
+
 	if time_left <= 0.0:
+		time_left = 0.0
+		update_timer_label()
 		fail_level("Čas vypršel.")
+		return
+
+	update_timer_label()
 
 
 func setup_ui():
@@ -161,36 +178,51 @@ func setup_ui():
 
 	style_green_button(article_agree_button)
 	style_red_button(article_no_button)
+
 	layout_ui()
 
 
 func show_article_screen():
 	screen_state = "article"
+
 	background.color = Color(0.96, 0.96, 0.92)
+
 	article_label.visible = true
 	article_label.modulate = Color(0.10, 0.10, 0.10)
 	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+
 	article_no_button.visible = true
 	article_no_button.disabled = false
+
 	article_agree_button.visible = true
 	article_agree_button.disabled = false
+
 	set_game_visible(false)
+	layout_ui()
 
 
 func show_game_screen():
 	screen_state = "game"
 	completed = false
 	failed = false
-	time_left = 60.0
+	time_left = max_time
+	attempts_left = max_attempts
+
 	background.color = Color(0.96, 0.96, 0.92)
+
 	article_label.visible = false
 	article_no_button.visible = false
 	article_agree_button.visible = false
+
 	set_game_visible(true)
+
 	result_label.visible = false
+	result_label.text = ""
+
 	create_grid()
 	layout_ui()
 	update_timer_label()
+	update_instruction_label()
 
 
 func set_game_visible(visible: bool):
@@ -207,36 +239,49 @@ func layout_ui():
 	if screen_state == "article":
 		article_label.position = Vector2(70, 30)
 		article_label.size = Vector2(window_size.x - 140, window_size.y - 145)
+
 		var article_button_size = Vector2(180, 44)
 		var spacing = 80
 		var total_width = article_button_size.x * 2 + spacing
 		var start_x = window_size.x / 2.0 - total_width / 2.0
 		var button_y = window_size.y - 68
+
 		article_no_button.size = article_button_size
 		article_agree_button.size = article_button_size
+
 		article_no_button.position = Vector2(start_x, button_y)
 		article_agree_button.position = Vector2(start_x + article_button_size.x + spacing, button_y)
+
 		update_system_control_label_position()
 		return
 
 	instruction_label.position = Vector2(60, 24)
 	instruction_label.size = Vector2(window_size.x - 120, 36)
-	instruction_label.text = "Najdi slovo SOUHLASÍM."
+	update_instruction_label()
 
 	timer_label.position = Vector2(60, 60)
 	timer_label.size = Vector2(window_size.x - 120, 28)
 
 	search_panel.position = Vector2(48, 94)
 	search_panel.size = Vector2(window_size.x - 96, min(350.0, window_size.y - 154.0))
+
 	result_label.position = Vector2(70, window_size.y - 56)
 	result_label.size = Vector2(window_size.x - 140, 34)
+
 	layout_grid()
 	update_system_control_label_position()
 
 
+func update_instruction_label():
+	if instruction_label:
+		instruction_label.text = "Najdi slovo SOUHLASÍM. Pokusy: " + str(attempts_left) + "/" + str(max_attempts)
+
+
 func create_grid():
 	clear_grid()
+
 	var grid = make_letter_grid()
+
 	for r in range(rows):
 		for c in range(cols):
 			var cell = Button.new()
@@ -253,15 +298,24 @@ func clear_grid():
 	for cell in cells:
 		if cell and is_instance_valid(cell):
 			cell.queue_free()
+
 	cells.clear()
 
 
 func layout_grid():
 	if cells.is_empty():
 		return
+
 	var start = Vector2(24, 24)
-	var gap = Vector2((search_panel.size.x - 48.0) / float(cols), (search_panel.size.y - 48.0) / float(rows))
-	var cell_size = Vector2(min(32.0, gap.x - 4.0), min(28.0, gap.y - 4.0))
+	var gap = Vector2(
+		(search_panel.size.x - 48.0) / float(cols),
+		(search_panel.size.y - 48.0) / float(rows)
+	)
+	var cell_size = Vector2(
+		min(32.0, gap.x - 4.0),
+		min(28.0, gap.y - 4.0)
+	)
+
 	for r in range(rows):
 		for c in range(cols):
 			var index = r * cols + c
@@ -272,45 +326,61 @@ func layout_grid():
 func make_letter_grid() -> Array:
 	for attempts in range(160):
 		var grid = []
+
 		for r in range(rows):
 			var row = []
+
 			for c in range(cols):
 				row.append(allowed_letters.pick_random())
+
 			grid.append(row)
 
 		place_target_word(grid)
+
 		if count_target_words(grid) == 1:
 			return grid
+
 	return make_simple_grid()
 
 
 func make_simple_grid() -> Array:
 	var grid = []
+
 	for r in range(rows):
 		var row = []
+
 		for c in range(cols):
 			row.append(allowed_letters.pick_random())
+
 		grid.append(row)
+
 	target_cells.clear()
+
 	for i in range(target_letters.size()):
 		grid[i][2] = target_letters[i]
 		target_cells.append(Vector2i(2, i))
+
 	return grid
 
 
 func place_target_word(grid: Array):
 	var directions = [Vector2i(1, 0), Vector2i(0, 1)]
 	var dir = directions.pick_random()
+
 	var start_col_min = 0 if dir.x >= 0 else target_letters.size() - 1
 	var start_col_max = cols - target_letters.size() if dir.x >= 0 else cols - 1
 	var start_row_min = 0
 	var start_row_max = rows - target_letters.size() if dir.y > 0 else rows - 1
+
 	var start_col = randi_range(start_col_min, start_col_max)
 	var start_row = randi_range(start_row_min, start_row_max)
+
 	target_cells.clear()
+
 	for i in range(target_letters.size()):
 		var c = start_col + dir.x * i
 		var r = start_row + dir.y * i
+
 		grid[r][c] = target_letters[i]
 		target_cells.append(Vector2i(c, r))
 
@@ -318,11 +388,13 @@ func place_target_word(grid: Array):
 func count_target_words(grid: Array) -> int:
 	var directions = [Vector2i(1, 0), Vector2i(0, 1)]
 	var total = 0
+
 	for r in range(rows):
 		for c in range(cols):
 			for dir in directions:
 				if word_at(grid, r, c, dir):
 					total += 1
+
 	return total
 
 
@@ -330,22 +402,27 @@ func word_at(grid: Array, row: int, col: int, dir: Vector2i) -> bool:
 	for i in range(target_letters.size()):
 		var r = row + dir.y * i
 		var c = col + dir.x * i
+
 		if r < 0 or r >= rows or c < 0 or c >= cols:
 			return false
+
 		if grid[r][c] != target_letters[i]:
 			return false
+
 	return true
 
 
 func _on_article_agree_pressed():
 	if completed or failed:
 		return
+
 	show_game_screen()
 
 
 func _on_article_no_pressed():
 	if completed or failed:
 		return
+
 	fail_level("Souhlas nebyl dokončen.")
 
 
@@ -356,48 +433,77 @@ func _on_cell_pressed(row: int, col: int):
 	if target_cells.has(Vector2i(col, row)):
 		highlight_word()
 		complete_level()
-	else:
-		GameState.add_system_control(3)
-		update_system_control_label()
-		result_label.modulate = Color(0.58, 0.0, 0.0)
-		result_label.text = "Tady SOUHLASÍM není."
-		result_label.visible = true
+		return
+
+	attempts_left -= 1
+	update_instruction_label()
+	update_system_control_label()
+
+	result_label.modulate = Color(0.58, 0.0, 0.0)
+	result_label.visible = true
+
+	if attempts_left <= 0:
+		attempts_left = 0
+		update_instruction_label()
+		result_label.text = GameState.result_fail_text
+		fail_level("Došly pokusy.")
+		return
+
+	result_label.text = "Tady SOUHLASÍM není. Zbývá pokusů: " + str(attempts_left)
 
 
 func highlight_word():
 	for pos in target_cells:
 		var index = pos.y * cols + pos.x
-		cells[index].add_theme_stylebox_override("normal", make_button_style(Color(0.65, 0.90, 0.66), Color(0.10, 0.45, 0.22)))
+		cells[index].add_theme_stylebox_override(
+			"normal",
+			make_button_style(Color(0.65, 0.90, 0.66), Color(0.10, 0.45, 0.22))
+		)
 
 
 func complete_level():
 	completed = true
 	background.color = Color(0.84, 0.94, 0.84)
+
 	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = "Jedno jediné SOUHLASÍM nalezeno."
+	result_label.text = GameState.result_success_text
 	result_label.visible = true
-	GameState.reduce_system_control(5)
+
 	update_system_control_label()
-	await get_tree().create_timer(0.9).timeout
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
 func fail_level(message: String):
 	if failed:
 		return
+
 	failed = true
 	background.color = Color(0.95, 0.82, 0.82)
+
 	if screen_state == "article":
 		article_no_button.disabled = true
 		article_agree_button.disabled = true
+
 		article_label.modulate = Color(0.58, 0.0, 0.0)
-		article_label.text = message
+		article_label.text = GameState.result_fail_text
+
+		result_label.visible = false
+
+		update_system_control_label()
+
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
+		level_failed.emit()
+		return
+
 	result_label.modulate = Color(0.58, 0.0, 0.0)
-	result_label.text = message
+	result_label.text = GameState.result_fail_text
 	result_label.visible = true
-	GameState.add_system_control(10)
+
 	update_system_control_label()
-	await get_tree().create_timer(fail_freeze_time).timeout
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -408,6 +514,7 @@ func update_timer_label():
 func update_system_control_label_position():
 	if control_label == null or not is_instance_valid(control_label):
 		return
+
 	control_label.position = Vector2(window_size.x - 340, 8)
 	control_label.text = GameState.get_system_control_text()
 

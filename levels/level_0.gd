@@ -87,10 +87,20 @@ func layout_ui():
 
 
 func _on_agree_pressed():
+	agree_button.disabled = true
+	disagree_button.disabled = true
+	article_label.modulate = Color(0.0, 0.50, 0.0)
+	article_label.text = GameState.result_success_text
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
 func _on_disagree_pressed():
+	agree_button.disabled = true
+	disagree_button.disabled = true
+	article_label.modulate = Color(0.58, 0.0, 0.0)
+	article_label.text = GameState.result_fail_text
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 

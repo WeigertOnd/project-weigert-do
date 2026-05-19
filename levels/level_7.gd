@@ -723,7 +723,6 @@ func get_segment_hit_ratio(point: Vector2, segment_start: Vector2, segment_end: 
 
 func drain_ball():
 	balls_left -= 1
-	GameState.add_system_control(5)
 	update_system_control_label()
 
 	if balls_left <= 0 and not unlocked:
@@ -732,10 +731,10 @@ func drain_ball():
 		if launch_button:
 			launch_button.disabled = true
 
-		status_label.text = "Kuličky došly. Nepodařilo se získat 500 skóre."
+		status_label.text = GameState.result_fail_text
 		score_label.text = "Skóre: %d\nKuličky: 0" % score
 
-		await get_tree().create_timer(1.4).timeout
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
 		level_failed.emit()
 		return
 
@@ -765,7 +764,6 @@ func unlock_no_button():
 	if launch_button:
 		launch_button.disabled = true
 
-	GameState.reduce_system_control(5)
 	update_system_control_label()
 	update_labels()
 
@@ -886,6 +884,9 @@ func activate_right_flipper():
 
 func _on_no_pressed():
 	if screen_state == "article":
+		article_label.modulate = Color(0.58, 0.0, 0.0)
+		article_label.text = GameState.result_fail_text
+		await get_tree().create_timer(GameState.result_freeze_time).timeout
 		level_failed.emit()
 		return
 
@@ -895,6 +896,9 @@ func _on_no_pressed():
 	if not unlocked:
 		return
 
+	status_label.modulate = Color(0.0, 0.50, 0.0)
+	status_label.text = GameState.result_success_text
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 

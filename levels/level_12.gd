@@ -38,7 +38,6 @@ var required_similarity = 92.0
 
 var attempts = 0
 var max_attempts = 5
-var fail_freeze_time = 1.0
 
 
 func _ready():
@@ -327,7 +326,6 @@ func _on_check_pressed():
 		result_label.modulate = Color(0.0, 0.50, 0.0)
 		result_label.text = "Dost blízko: " + str(int(similarity)) + " %. Souhlasím odemčeno."
 
-		GameState.reduce_system_control(4)
 	else:
 		attempts += 1
 
@@ -342,7 +340,6 @@ func _on_check_pressed():
 			+ "."
 		)
 
-		GameState.add_system_control(5)
 
 		if attempts >= max_attempts:
 			fail_level_from_game()
@@ -367,9 +364,9 @@ func _on_agree_pressed():
 	background.color = Color(0.84, 0.94, 0.84)
 
 	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = "Přijato."
+	result_label.text = GameState.result_success_text
 
-	await get_tree().create_timer(0.7).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
@@ -385,12 +382,11 @@ func fail_level_from_article():
 	agree_button.disabled = true
 
 	article_label.modulate = Color(0.55, 0.0, 0.0)
-	article_label.text = ("SOUHLAS NEBYL DOKONČEN")
+	article_label.text = GameState.result_fail_text
 
 
-	GameState.add_system_control(8)
 
-	await get_tree().create_timer(fail_freeze_time).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -406,11 +402,10 @@ func fail_level_from_game():
 	agree_button.disabled = true
 
 	result_label.modulate = Color(0.56, 0.0, 0.0)
-	result_label.text = "Pokusy vyčerpány: " + str(attempts) + "/" + str(max_attempts)
+	result_label.text = GameState.result_fail_text
 
-	GameState.add_system_control(10)
 
-	await get_tree().create_timer(fail_freeze_time).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 

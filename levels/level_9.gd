@@ -29,7 +29,6 @@ var buttons_swapped = false
 var bar_position = Vector2.ZERO
 var bar_size = Vector2.ZERO
 
-var fail_freeze_time = 0.9
 
 
 func _ready():
@@ -231,15 +230,10 @@ func finish_success():
 	background.color = Color(0.84, 0.94, 0.84)
 
 	article_label.modulate = Color(0.05, 0.38, 0.10)
-	article_label.text = (
-		"SOUHLAS DOPLNĚN\n\n"
-		+ "Podařilo se ti doplnit celý souhlas.\n\n"
-		+ "Podmínka byla úspěšně potvrzena."
-	)
+	article_label.text = GameState.result_success_text
 
-	GameState.reduce_system_control(5)
 
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 
@@ -255,15 +249,10 @@ func fail_level():
 	background.color = Color(0.95, 0.82, 0.82)
 
 	article_label.modulate = Color(0.55, 0.0, 0.0)
-	article_label.text = (
-		"SOUHLAS NEBYL DOPLNĚN\n\n"
-		+ "Klikl/a jsi na Nesouhlasím.\n\n"
-		+ "Pro pokračování musíte souhlasit se všemi podmínkami."
-	)
+	article_label.text = GameState.result_fail_text
 
-	GameState.add_system_control(8)
 
-	await get_tree().create_timer(fail_freeze_time).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 

@@ -319,11 +319,10 @@ func _on_article_no_pressed():
 	background.color = Color(0.95, 0.82, 0.82)
 
 	article_label.modulate = Color(0.55, 0.0, 0.0)
-	article_label.text = ("SOUHLAS NEBYL DOKONČEN")
+	article_label.text = GameState.result_fail_text
 
-	GameState.add_system_control(8)
 
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -415,7 +414,6 @@ func _on_game_button_pressed():
 		return
 
 	score += 1
-	GameState.reduce_system_control(1)
 	update_score_label()
 
 	if score >= target_score:
@@ -455,7 +453,7 @@ func fail_level():
 
 	background.color = Color(0.95, 0.82, 0.82)
 
-	error_label.text = "CHYBA"
+	error_label.text = GameState.result_fail_text
 	error_label.visible = true
 
 	target_label.text = "Nesouhlasím"
@@ -463,9 +461,8 @@ func fail_level():
 
 	score_label.text = "Reakce: %d/%d" % [score, target_score]
 
-	GameState.add_system_control(10)
 
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -482,7 +479,11 @@ func complete_level():
 	target_label.text = "Souhlasím"
 	score_label.text = "Reakce: %d/%d" % [target_score, target_score]
 
-	await get_tree().create_timer(0.9).timeout
+	error_label.modulate = Color(0.0, 0.50, 0.0)
+	error_label.text = GameState.result_success_text
+	error_label.visible = true
+
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 

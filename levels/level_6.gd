@@ -211,9 +211,6 @@ func generate_minefield():
 		var key = possible_mine_cells[i]
 		mines[key] = true
 
-	print("DEBUG miny položeny: ", mines_to_place)
-	print("DEBUG bezpečná cesta: ", path_rows)
-
 
 func create_grid_buttons():
 	# DŮLEŽITÉ:
@@ -371,15 +368,12 @@ func reveal_mine(row: int, col: int):
 		style_mine_cell(button)
 
 	text_label.modulate = Color(0.55, 0.0, 0.0)
-	text_label.text = (
-		"MINA NALEZENA\n\n"
-		+ "Pro pokračování musíte souhlasit se všemi podmínkami."
-	)
+	text_label.text = GameState.result_fail_text
 
 	for button in grid_buttons.values():
 		button.disabled = true
 
-	await get_tree().create_timer(1.4).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
@@ -388,13 +382,9 @@ func win_level():
 		button.disabled = true
 
 	text_label.modulate = Color(0.05, 0.38, 0.10)
-	text_label.text = (
-		"CESTA VYČIŠTĚNA\n\n"
-		+ "Dostal/a ses bezpečně z levé strany na pravou.\n\n"
-		+ "Souhlas byl úspěšně potvrzen."
-	)
+	text_label.text = GameState.result_success_text
 
-	await get_tree().create_timer(1.4).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 

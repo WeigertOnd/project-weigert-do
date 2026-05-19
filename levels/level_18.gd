@@ -32,7 +32,6 @@ var completed = false
 var failed = false
 
 var count_area = Rect2(34, 38, 788, 160)
-var fail_freeze_time = 0.9
 
 
 func _ready():
@@ -428,7 +427,7 @@ func complete_level():
 	background.color = Color(0.84, 0.94, 0.84)
 
 	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = "Správný počet."
+	result_label.text = GameState.result_success_text
 	result_label.visible = true
 
 	for btn in digit_buttons:
@@ -437,10 +436,9 @@ func complete_level():
 	confirm_button.disabled = true
 	delete_button.disabled = true
 
-	GameState.reduce_system_control(5)
 	update_system_control_label()
 
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_finished.emit()
 
 func fail_from_game():
@@ -458,13 +456,12 @@ func fail_from_game():
 	background.color = Color(0.95, 0.82, 0.82)
 
 	result_label.modulate = Color(0.58, 0.0, 0.0)
-	result_label.text = "Špatný počet. Správně je " + str(balls.size()) + "."
+	result_label.text = GameState.result_fail_text
 	result_label.visible = true
 
-	GameState.add_system_control(10)
 	update_system_control_label()
 
-	await get_tree().create_timer(fail_freeze_time).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 	
 func fail_from_article():
@@ -479,12 +476,11 @@ func fail_from_article():
 	background.color = Color(0.95, 0.82, 0.82)
 
 	article_label.modulate = Color(0.58, 0.0, 0.0)
-	article_label.text = "Souhlas nebyl dokončen."
+	article_label.text = GameState.result_fail_text
 
-	GameState.add_system_control(8)
 	update_system_control_label()
 
-	await get_tree().create_timer(fail_freeze_time).timeout
+	await get_tree().create_timer(GameState.result_freeze_time).timeout
 	level_failed.emit()
 
 
