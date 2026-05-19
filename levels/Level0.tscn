@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://bdrprovsbhkjr"]
+
+[ext_resource type="Script" uid="uid://c84hi7wrgtant" path="res://levels/level_0.gd" id="1_oo2mb"]
+
+[node name="Level0" type="Node2D" unique_id=1339367954]
+script = ExtResource("1_oo2mb")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=668812653]
+offset_right = 40.0
+offset_bottom = 40.0

@@ -18,24 +18,21 @@ var article_agree_button: Button
 var article_no_button: Button
 
 var instruction_label: Label
-var attempts_label: Label
+var code_label: Label
+var countdown_label: Label
+var input_box: LineEdit
 var result_label: Label
 var control_label: Label
 
-var target_center = Vector2(428, 250)
-var target_radius = 140.0
-var rotation_angle = 0.0
-var rotation_speed = 9.2
-var green_fraction = 0.10
-var cursor_pos = Vector2.ZERO
-var cursor_time = 0.0
+var code_value = ""
+var time_left = 12.0
 var completed = false
 var failed = false
-var attempts_left = 2
 var fail_freeze_time = 0.8
 
 
 func _ready():
+	randomize()
 	start_level()
 
 
@@ -57,17 +54,12 @@ func start_level():
 	screen_state = "article"
 	completed = false
 	failed = false
-	attempts_left = 2
-	rotation_angle = randf() * TAU
-	cursor_time = 0.0
-	cursor_pos = target_center
-
+	time_left = 12.0
 	setup_ui()
 	background.color = Color(0.96, 0.96, 0.92)
 	show_article_screen()
 	update_system_control_label()
 	layout_ui()
-	queue_redraw()
 
 
 func _process(delta):
@@ -79,44 +71,10 @@ func _process(delta):
 	if screen_state != "game" or completed or failed:
 		return
 
-	rotation_angle = fposmod(rotation_angle + rotation_speed * delta, TAU)
-	update_cursor(delta)
-	queue_redraw()
-
-
-func _input(event):
-	if screen_state != "game" or completed or failed:
-		return
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		check_click()
-
-
-func _draw():
-	if screen_state != "game":
-		return
-
-	draw_circle(target_center, target_radius + 8, Color(0.08, 0.22, 0.32))
-	draw_circle(target_center, target_radius, Color(0.82, 0.50, 0.56))
-	draw_sector(target_center, target_radius, rotation_angle, rotation_angle + TAU * green_fraction, Color(0.18, 0.62, 0.22))
-	draw_circle(target_center, 38, Color(0.96, 0.96, 0.92))
-	draw_arc(target_center, target_radius, 0, TAU, 96, Color(0.08, 0.22, 0.32), 4.0)
-	draw_string(ThemeDB.fallback_font, target_center + Vector2(-52, 8), "SOUHLASÍM", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.06, 0.22, 0.10))
-
-	draw_line(cursor_pos + Vector2(-16, 0), cursor_pos + Vector2(16, 0), Color(0.08, 0.18, 0.32), 3.0)
-	draw_line(cursor_pos + Vector2(0, -16), cursor_pos + Vector2(0, 16), Color(0.08, 0.18, 0.32), 3.0)
-	draw_circle(cursor_pos, 5, Color(0.95, 0.95, 0.95))
-	draw_arc(cursor_pos, 10, 0, TAU, 24, Color(0.08, 0.18, 0.32), 2.0)
-
-
-func draw_sector(center: Vector2, radius: float, from_angle: float, to_angle: float, color: Color):
-	var points = PackedVector2Array()
-	points.append(center)
-	var steps = 24
-	for i in range(steps + 1):
-		var t = float(i) / float(steps)
-		var angle = lerp(from_angle, to_angle, t)
-		points.append(center + Vector2(cos(angle), sin(angle)) * radius)
-	draw_colored_polygon(points, color)
+	time_left -= delta
+	update_countdown()
+	if time_left <= 0.0:
+		fail_level("Čas vypršel. Kód nebyl opsán včas.")
 
 
 func setup_ui():
@@ -137,7 +95,6 @@ func setup_ui():
 
 	if article_agree_button == null or not is_instance_valid(article_agree_button):
 		article_agree_button = Button.new()
-		article_agree_button.name = "ArticleAgreeButton"
 		article_agree_button.text = "Souhlasím"
 		article_agree_button.focus_mode = Control.FOCUS_NONE
 		article_agree_button.z_index = 12
@@ -146,7 +103,6 @@ func setup_ui():
 
 	if article_no_button == null or not is_instance_valid(article_no_button):
 		article_no_button = Button.new()
-		article_no_button.name = "ArticleNoButton"
 		article_no_button.text = "Nesouhlasím"
 		article_no_button.focus_mode = Control.FOCUS_NONE
 		article_no_button.z_index = 12
@@ -158,19 +114,37 @@ func setup_ui():
 		instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		instruction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		instruction_label.add_theme_font_size_override("font_size", 16)
+		instruction_label.add_theme_font_size_override("font_size", 18)
 		instruction_label.modulate = Color(0.15, 0.15, 0.15)
 		instruction_label.z_index = 20
 		add_child(instruction_label)
 
-	if attempts_label == null or not is_instance_valid(attempts_label):
-		attempts_label = Label.new()
-		attempts_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		attempts_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		attempts_label.add_theme_font_size_override("font_size", 16)
-		attempts_label.modulate = Color(0.15, 0.15, 0.15)
-		attempts_label.z_index = 20
-		add_child(attempts_label)
+	if code_label == null or not is_instance_valid(code_label):
+		code_label = Label.new()
+		code_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		code_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		code_label.add_theme_font_size_override("font_size", 34)
+		code_label.modulate = Color(0.08, 0.12, 0.18)
+		code_label.z_index = 20
+		add_child(code_label)
+
+	if countdown_label == null or not is_instance_valid(countdown_label):
+		countdown_label = Label.new()
+		countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		countdown_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		countdown_label.add_theme_font_size_override("font_size", 20)
+		countdown_label.modulate = Color(0.50, 0.0, 0.0)
+		countdown_label.z_index = 20
+		add_child(countdown_label)
+
+	if input_box == null or not is_instance_valid(input_box):
+		input_box = LineEdit.new()
+		input_box.placeholder_text = "Opiš kód"
+		input_box.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		input_box.max_length = 15
+		input_box.z_index = 20
+		input_box.text_changed.connect(_on_input_changed)
+		add_child(input_box)
 
 	if result_label == null or not is_instance_valid(result_label):
 		result_label = Label.new()
@@ -192,14 +166,12 @@ func setup_ui():
 
 	style_green_button(article_agree_button)
 	style_red_button(article_no_button)
-
 	layout_ui()
 
 
 func show_article_screen():
 	screen_state = "article"
 	background.color = Color(0.96, 0.96, 0.92)
-
 	article_label.visible = true
 	article_label.modulate = Color(0.10, 0.10, 0.10)
 	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
@@ -207,37 +179,34 @@ func show_article_screen():
 	article_no_button.disabled = false
 	article_agree_button.visible = true
 	article_agree_button.disabled = false
-
 	set_game_visible(false)
-	queue_redraw()
 
 
 func show_game_screen():
 	screen_state = "game"
 	completed = false
 	failed = false
-	attempts_left = 2
-	rotation_angle = randf() * TAU
-	cursor_time = 0.0
-	cursor_pos = target_center
+	time_left = 12.0
+	code_value = make_code()
 	background.color = Color(0.96, 0.96, 0.92)
-
 	article_label.visible = false
 	article_no_button.visible = false
 	article_agree_button.visible = false
-
 	set_game_visible(true)
+	code_label.text = code_value
+	input_box.text = ""
+	input_box.grab_focus()
 	result_label.visible = false
+	update_countdown()
 	layout_ui()
-	cursor_pos = target_center
-	update_attempts_label()
-	update_cursor(0.0)
-	queue_redraw()
 
 
 func set_game_visible(visible: bool):
 	instruction_label.visible = visible
-	attempts_label.visible = visible
+	code_label.visible = visible
+	countdown_label.visible = visible
+	input_box.visible = visible
+	input_box.editable = visible
 	result_label.visible = visible and result_label.visible
 
 
@@ -248,7 +217,6 @@ func layout_ui():
 	if screen_state == "article":
 		article_label.position = Vector2(70, 30)
 		article_label.size = Vector2(window_size.x - 140, window_size.y - 145)
-
 		var article_button_size = Vector2(180, 44)
 		var spacing = 80
 		var total_width = article_button_size.x * 2 + spacing
@@ -261,46 +229,35 @@ func layout_ui():
 		update_system_control_label_position()
 		return
 
-	target_radius = min(142.0, max(104.0, min(window_size.x, window_size.y) * 0.25))
-	target_center = Vector2(window_size.x / 2.0, window_size.y / 2.0 + 2)
-	instruction_label.position = Vector2(60, 34)
-	instruction_label.size = Vector2(window_size.x - 120, 42)
-	instruction_label.text = "Klikni ve chvíli, kdy se pohyblivé mířítko trefí do zelené části SOUHLASÍM."
-
-	attempts_label.position = Vector2(60, 78)
-	attempts_label.size = Vector2(window_size.x - 120, 26)
-
-	result_label.position = Vector2(70, window_size.y - 64)
+	instruction_label.position = Vector2(60, 78)
+	instruction_label.size = Vector2(window_size.x - 120, 36)
+	instruction_label.text = "Opiš dvanáctimístný kód dřív, než zmizí."
+	code_label.position = Vector2(60, 144)
+	code_label.size = Vector2(window_size.x - 120, 58)
+	countdown_label.position = Vector2(60, 214)
+	countdown_label.size = Vector2(window_size.x - 120, 34)
+	input_box.position = Vector2(window_size.x / 2.0 - 180, 278)
+	input_box.size = Vector2(360, 46)
+	result_label.position = Vector2(70, window_size.y - 82)
 	result_label.size = Vector2(window_size.x - 140, 34)
-
 	update_system_control_label_position()
 
 
-func update_cursor(delta):
-	cursor_time += delta
+func make_code() -> String:
+	var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	var output = ""
+	for i in range(15):
+		output += chars.substr(randi_range(0, chars.length() - 1), 1)
+	return output
 
-	var radius = target_radius * (
-		0.58
-		+ 0.24 * sin(cursor_time * 2.6)
-		+ 0.12 * sin(cursor_time * 6.4)
-		+ 0.05 * sin(cursor_time * 10.2)
-	)
-	var angle = (
-		cursor_time * 3.55
-		+ sin(cursor_time * 4.0) * 0.95
-		+ cos(cursor_time * 7.8) * 0.42
-		+ sin(cursor_time * 11.6) * 0.16
-	)
-	var wobble = Vector2(
-		sin(cursor_time * 8.8) * 26.0 + sin(cursor_time * 14.0) * 8.0,
-		cos(cursor_time * 7.3) * 23.0 + cos(cursor_time * 11.8) * 7.0
-	)
-	cursor_pos = target_center + Vector2(cos(angle), sin(angle)) * radius + wobble
 
-	var delta_from_center = cursor_pos - target_center
-	var max_distance = target_radius - 12.0
-	if delta_from_center.length() > max_distance:
-		cursor_pos = target_center + delta_from_center.normalized() * max_distance
+func _on_input_changed(new_text: String):
+	if screen_state != "game" or completed or failed:
+		return
+	input_box.text = new_text.to_upper()
+	input_box.caret_column = input_box.text.length()
+	if input_box.text == code_value:
+		complete_level()
 
 
 func _on_article_agree_pressed():
@@ -315,38 +272,17 @@ func _on_article_no_pressed():
 	fail_level("Souhlas nebyl dokončen.")
 
 
-func check_click():
-	var delta = cursor_pos - target_center
-	var distance = delta.length()
-	if distance > target_radius or distance < 42.0:
-		fail_click()
-		return
-
-	var angle = fposmod(atan2(delta.y, delta.x), TAU)
-	var local_angle = fposmod(angle - rotation_angle, TAU)
-	if local_angle <= TAU * green_fraction:
-		complete_level()
-	else:
-		fail_click()
-
-
-func fail_click():
-	attempts_left -= 1
-	GameState.add_system_control(8)
-	update_system_control_label()
-	background.color = Color(0.95, 0.82, 0.82)
-	result_label.modulate = Color(0.58, 0.0, 0.0)
+func complete_level():
+	completed = true
+	input_box.editable = false
+	background.color = Color(0.84, 0.94, 0.84)
+	result_label.modulate = Color(0.0, 0.50, 0.0)
+	result_label.text = "Kód opsán včas."
 	result_label.visible = true
-
-	if attempts_left <= 0:
-		fail_level("Druhý pokus minul zelenou část.")
-		return
-
-	update_attempts_label()
-	result_label.text = "Mimo. Zbývá 1 pokus."
-	await get_tree().create_timer(0.35).timeout
-	if not completed and not failed:
-		background.color = Color(0.96, 0.96, 0.92)
+	GameState.reduce_system_control(5)
+	update_system_control_label()
+	await get_tree().create_timer(0.9).timeout
+	level_finished.emit()
 
 
 func fail_level(message: String):
@@ -354,13 +290,13 @@ func fail_level(message: String):
 		return
 	failed = true
 	background.color = Color(0.95, 0.82, 0.82)
-
 	if screen_state == "article":
 		article_no_button.disabled = true
 		article_agree_button.disabled = true
 		article_label.modulate = Color(0.58, 0.0, 0.0)
 		article_label.text = message
-
+	else:
+		input_box.editable = false
 	result_label.modulate = Color(0.58, 0.0, 0.0)
 	result_label.text = message
 	result_label.visible = true
@@ -370,21 +306,8 @@ func fail_level(message: String):
 	level_failed.emit()
 
 
-func complete_level():
-	completed = true
-	background.color = Color(0.84, 0.94, 0.84)
-	result_label.modulate = Color(0.0, 0.50, 0.0)
-	result_label.text = "Trefa."
-	result_label.visible = true
-	GameState.reduce_system_control(5)
-	update_system_control_label()
-	await get_tree().create_timer(0.9).timeout
-	level_finished.emit()
-
-
-func update_attempts_label():
-	if attempts_label:
-		attempts_label.text = "Pokusy: " + str(attempts_left) + "/2"
+func update_countdown():
+	countdown_label.text = "Čas: " + str(max(0, ceili(time_left))) + " s"
 
 
 func update_system_control_label_position():

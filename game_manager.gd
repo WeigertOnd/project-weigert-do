@@ -47,6 +47,23 @@ var monitor_percent_label
 
 var clock_timer = 0.0
 var bonus_level_launch_pending = false
+var highest_unlocked_article = 1
+var current_article_number = 1
+var used_random_levels = []
+var article_to_level = {}
+var completed_articles = []
+var testing_level_mode = false
+
+var tos_article_titles = [
+	"Článek 1: Postoje uživatelů",
+	"Článek 2: Ohledy vůči vývojářům",
+	"Článek 3: Postoj k chybám",
+	"Článek 4: O sdílení zkušenosti",
+	"Článek 5: Závislost",
+	"Článek 6: Nakládání s osobními údaji",
+	"Článek 7: Nakládání s herními daty",
+	"Článek 8: Ohledně podvodů"
+]
 
 
 func _ready():
@@ -159,7 +176,7 @@ func build_desktop():
 
 	desktop_game_label = Label.new()
 	desktop_game_label.name = "DesktopGameLabel"
-	desktop_game_label.text = "I agreee"
+	desktop_game_label.text = "Hra Installer.exe"
 	desktop_game_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desktop_game_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	desktop_game_label.add_theme_font_size_override("font_size", 12)
@@ -234,7 +251,6 @@ func build_desktop():
 	start_menu.add_child(menu_shutdown_button)
 
 	build_game_window()
-	build_system_monitor()
 
 
 func build_game_window():
@@ -347,8 +363,6 @@ func layout_desktop():
 			menu_shutdown_button.size = Vector2(214, 40)
 
 	layout_game_window()
-	layout_system_monitor()
-
 
 func layout_game_window():
 	var screen = get_viewport_rect().size
@@ -408,7 +422,6 @@ func show_game_window():
 	title_label.visible = true
 	content_panel.visible = true
 	content_root.visible = true
-	show_system_monitor()
 
 
 func hide_game_window():
@@ -419,7 +432,6 @@ func hide_game_window():
 	title_label.visible = false
 	content_panel.visible = false
 	content_root.visible = false
-	hide_system_monitor()
 
 
 func set_window_title(new_title: String):
@@ -648,11 +660,168 @@ func _on_start_pressed():
 	update_start_menu_buttons()
 
 
+func show_tos_articles_screen():
+	show_popup_window(
+		"Terms of Service",
+		"",
+		"Zpět",
+		Callable(self, "go_to_desktop")
+	)
+
+	var size = get_window_content_size()
+
+	if popup_label:
+		popup_label.visible = false
+
+	if popup_title:
+		popup_title.text = "Terms of Service"
+		popup_title.position = Vector2(40, 32)
+		popup_title.size = Vector2(size.x - 80, 38)
+		popup_title.add_theme_font_size_override("font_size", 26)
+
+	if popup_button:
+		popup_button.text = "Zpět"
+		popup_button.position = Vector2(size.x / 2 - 105, size.y - 58)
+		popup_button.size = Vector2(210, 38)
+
+	var subtitle = Label.new()
+	subtitle.name = "TosSubtitle"
+	subtitle.text = "Hru lze spustit až po přečtení odemčeného článku"
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	subtitle.position = Vector2(40, 78)
+	subtitle.size = Vector2(size.x - 80, 26)
+	subtitle.add_theme_font_size_override("font_size", 16)
+	subtitle.modulate = Color(0.18, 0.18, 0.18)
+	content_root.add_child(subtitle)
+
+	var list_panel = Panel.new()
+	list_panel.name = "TosListPanel"
+	list_panel.position = Vector2(56, 120)
+	list_panel.size = Vector2(size.x - 112, 328)
+	list_panel.add_theme_stylebox_override("panel", make_tos_list_style())
+	content_root.add_child(list_panel)
+
+	var start_y = 132
+	var row_height = 30
+	var row_spacing = 8
+	var title_width = size.x - 280
+
+	for i in range(tos_article_titles.size()):
+		var article_number = i + 1
+		var y = start_y + i * (row_height + row_spacing)
+		var is_unlocked = article_number <= highest_unlocked_article
+		var is_completed = completed_articles.has(article_number)
+
+		var article_label = Label.new()
+		article_label.name = "TosArticleLabel" + str(article_number)
+		article_label.text = tos_article_titles[i]
+
+		article_label.position = Vector2(76, y)
+		article_label.size = Vector2(title_width, row_height)
+		article_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		article_label.add_theme_font_size_override("font_size", 14)
+
+		if is_completed:
+			article_label.modulate = Color(0.20, 0.48, 0.20)
+		elif is_unlocked:
+			article_label.modulate = Color(0.12, 0.12, 0.12)
+		else:
+			article_label.modulate = Color(0.55, 0.55, 0.55)
+
+		content_root.add_child(article_label)
+
+		var read_button = Button.new()
+		read_button.name = "TosReadButton" + str(article_number)
+		read_button.position = Vector2(size.x - 184, y)
+		read_button.size = Vector2(108, row_height)
+
+		if is_completed:
+			read_button.text = "✓ Přečteno"
+			read_button.disabled = true
+			style_completed_button(read_button)
+		elif is_unlocked:
+			read_button.text = "Přečíst"
+			read_button.disabled = false
+			style_window_button(read_button)
+			read_button.pressed.connect(Callable(self, "_on_tos_read_pressed").bind(article_number))
+		else:
+			read_button.text = "Zamčeno"
+			read_button.disabled = true
+			style_window_button(read_button)
+
+		content_root.add_child(read_button)
+
+
+func _on_tos_read_pressed(article_number: int):
+	if article_number > highest_unlocked_article:
+		return
+
+	if completed_articles.has(article_number):
+		return
+
+	testing_level_mode = false
+	current_article_number = article_number
+
+	if article_number == 1:
+		start_level_0()
+		return
+
+	var level_number = get_or_create_random_level_for_article(article_number)
+	start_selected_level(level_number)
+
+
+func get_or_create_random_level_for_article(article_number: int) -> int:
+	if article_to_level.has(article_number):
+		return article_to_level[article_number]
+
+	var available_levels = []
+
+	for level_number in range(1, 23):
+		if not used_random_levels.has(level_number):
+			available_levels.append(level_number)
+
+	if available_levels.is_empty():
+		push_error("Nejsou dostupné žádné další levely.")
+		return 1
+
+	var random_index = randi_range(0, available_levels.size() - 1)
+	var selected_level = available_levels[random_index]
+
+	used_random_levels.append(selected_level)
+	article_to_level[article_number] = selected_level
+
+	return selected_level
+
+func make_tos_list_style() -> StyleBoxFlat:
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.98, 0.98, 0.95)
+	sb.border_color = Color(0.05, 0.20, 0.30)
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 2
+	sb.corner_radius_top_left = 6
+	sb.corner_radius_top_right = 6
+	sb.corner_radius_bottom_left = 6
+	sb.corner_radius_bottom_right = 6
+	return sb
+
+
 func start_new_game():
 	start_menu.visible = false
+	reset_tos_game_progress()
+	show_tos_articles_screen()
+
+func reset_tos_game_progress():
 	GameState.reset_system_control()
 	GameState.reset_level_progress()
-	show_level_select_menu()
+	highest_unlocked_article = 1
+	current_article_number = 1
+	used_random_levels.clear()
+	article_to_level.clear()
+	completed_articles.clear()
 
 
 func show_level_select_menu(show_all_levels: bool = false):
@@ -674,7 +843,8 @@ func show_level_select_menu(show_all_levels: bool = false):
 	if popup_button:
 		popup_button.position = Vector2(size.x / 2 - 105, 462)
 
-	var level_names = ["Level 1: Souhlas s podmínkami", "Level 2: Nastavení soukromí", "Level 3: Ověření identity", "Level 4: Žádost o smazání dat", "Level 5: Finální test", "Level 6: Tahací automat", "Level 7: Pinball nesouhlasu", "Level 8: Prohozený souhlas", "Level 9: Pumpa nesouhlasu", "Level 10: Reakce", "Level 11: Odhad času", "Level 12: Odhad barvy", "Level 13: Překrytá okna", "Level 14: Fronta souhlasů", "Level 15: Neviditelný nesouhlas", "Level 16: Utíkající nesouhlas", "Level 17: Automat", "Level 18: Počet kuliček", "Level 19: Bodovací kulička", "Level 20: Terč nesouhlasu", "Level 21: Hledání slova"]
+	var level_names = ["Level 1: Utíkající souhlas", "Level 2: Kód", "Level 3: Běhání", "Level 4: Najdi souhlas", "Level 5: Létající souhlas", "Level 6: Hledání min", "Level 7: Pinball", "Level 8: Prohozený souhlas", "Level 9: Pumpa nesouhlasu", "Level 10: Reakce", "Level 11: Odhad času", "Level 12: Odhad barvy", "Level 13: Překrytý souhlas", "Level 14: Fronta souhlasů", "Level 15: Neviditelný nesouhlas", "Level 16: Utíkající nesouhlas", "Level 17: Automat", "Level 18: Počet kuliček", "Level 19: Bodovací kulička", "Level 20: Terč nesouhlasu", "Level 21: Hledání slova"]
+	level_names.append("Level 22: Autentizační kód")
 	var start_y = 66
 	var button_width = 300
 	var button_height = 30
@@ -682,7 +852,7 @@ func show_level_select_menu(show_all_levels: bool = false):
 	var column_spacing = 22
 	var columns = 2
 
-	for i in range(1, 22):
+	for i in range(1, 23):
 		var column = (i - 1) % columns
 		var row = floori(float(i - 1) / float(columns))
 		var total_width = button_width * columns + column_spacing
@@ -693,7 +863,7 @@ func show_level_select_menu(show_all_levels: bool = false):
 		level_button.size = Vector2(button_width, button_height)
 		style_window_button(level_button)
 		if show_all_levels:
-			level_button.pressed.connect(Callable(self, "start_selected_level").bind(i))
+			level_button.pressed.connect(Callable(self, "start_selected_level_for_testing").bind(i))
 		else:
 			level_button.disabled = not GameState.is_level_unlocked(i)
 			if level_button.disabled:
@@ -750,7 +920,7 @@ func clear_window_content():
 func load_level(level_path: String, title: String, finished_function: Callable):
 	clear_window_content()
 	show_game_window()
-	set_window_title(title)
+	set_window_title("Souhlasíte s článkem " + str(current_article_number))
 
 	current_level_path = level_path
 	current_level_finished_function = finished_function
@@ -768,8 +938,14 @@ func load_level(level_path: String, title: String, finished_function: Callable):
 	current_level = level_scene.instantiate()
 	content_root.add_child(current_level)
 
+	if current_level.has_method("set_article_number"):
+		current_level.set_article_number(current_article_number)
+
 	if current_level.has_signal("level_finished"):
 		current_level.level_finished.connect(finished_function)
+
+	if current_level.has_signal("level_failed"):
+		current_level.level_failed.connect(Callable(self, "fail_tos_game"))
 
 	if current_level.has_method("set_window_size"):
 		current_level.set_window_size(get_window_content_size())
@@ -833,7 +1009,7 @@ func show_popup_window(window_title_text: String, body_text: String, button_text
 	update_start_menu_buttons()
 
 
-func show_final_screen():
+func show_old_final_screen():
 	show_popup_window(
 		"NESOUHLAS PŘIJAT",
 		"Gratuluji.\nDostal ses ke skutečnému NESOUHLASÍM.\n\nKontrola systému: " + str(GameState.system_control) + " %",
@@ -842,9 +1018,63 @@ func show_final_screen():
 	)
 
 
+func show_final_screen():
+	show_popup_window(
+		"Podmínky odsouhlaseny",
+		"Všech 8 článků bylo odsouhlaseno.\nNyní můžeš pokračovat ke stažení Hry.",
+		"Pokračovat",
+		Callable(self, "_on_continue_download_pressed")
+	)
+
+
+func _on_continue_download_pressed():
+	show_popup_window(
+		"Stahování aplikace",
+		"Připravuji stažení Hry...\nProsím čekej.",
+		"Stahuji...",
+		Callable()
+	)
+
+	if popup_button and is_instance_valid(popup_button):
+		popup_button.disabled = true
+
+	await get_tree().create_timer(5).timeout
+	show_download_failed_screen()
+
+
+func show_download_failed_screen():
+	show_popup_window(
+		"Chyba stahování",
+		"Stažení Hry nebylo dokončeno.\n",
+		"Zkusit znovu stáhnout",
+		Callable(self, "_on_retry_download_pressed")
+	)
+
+
+func _on_retry_download_pressed():
+	reset_tos_game_progress()
+	show_tos_articles_screen()
+
+
 # =========================================================
 # LEVEL FLOW
 # =========================================================
+
+func fail_tos_game():
+	show_popup_window(
+		"Souhlas nebyl dokončen",
+		"Pro pokračování musíte souhlasit se všemi podmínkami.",
+		"Začít znovu",
+		Callable(self, "_on_fail_restart_pressed")
+	)
+
+
+func _on_fail_restart_pressed():
+	reset_tos_game_progress()
+	show_tos_articles_screen()
+
+func start_level_0():
+	load_level("res://levels/Level0.tscn", "Souhlasíte s článkem 1", Callable(self, "_on_level_0_finished"))
 
 func start_level_1():
 	load_level("res://levels/Level1.tscn", "Souhlas s podmínkami", Callable(self, "_on_level_1_finished"))
@@ -930,10 +1160,29 @@ func start_level_21():
 	load_level("res://levels/Level21.tscn", "Hledání slova", Callable(self, "_on_level_21_finished"))
 
 
-func finish_level_and_return_to_select(completed_level: int):
-	GameState.unlock_next_level(completed_level)
-	show_level_select_menu()
+func start_level_22():
+	load_level("res://levels/Level22.tscn", "Paměťový kód", Callable(self, "_on_level_22_finished"))
 
+func finish_level_and_return_to_select(_completed_level: int):
+	if testing_level_mode:
+		testing_level_mode = false
+		show_level_select_menu(true)
+		return
+
+	if not completed_articles.has(current_article_number):
+		completed_articles.append(current_article_number)
+
+	if current_article_number >= tos_article_titles.size():
+		show_final_screen()
+		return
+
+	if current_article_number >= highest_unlocked_article:
+		highest_unlocked_article = clamp(current_article_number + 1, 1, tos_article_titles.size())
+
+	show_tos_articles_screen()
+
+func _on_level_0_finished():
+	finish_level_and_return_to_select(0)
 
 func _on_level_1_finished():
 	finish_level_and_return_to_select(1)
@@ -1018,12 +1267,21 @@ func _on_level_20_finished():
 func _on_level_21_finished():
 	finish_level_and_return_to_select(21)
 
+
+func _on_level_22_finished():
+	finish_level_and_return_to_select(22)
+
 # =========================================================
 # DIRECT LEVEL START (for level select menu)
 # =========================================================
 
+func start_selected_level_for_testing(level_number: int):
+	testing_level_mode = true
+	current_article_number = 1
+	start_selected_level(level_number)
+
 func start_selected_level(level_number: int):
-	if level_number < 1 or level_number > 21:
+	if level_number < 1 or level_number > 22:
 		return
 
 	match level_number:
@@ -1070,6 +1328,8 @@ func start_selected_level(level_number: int):
 			start_level_20()
 		21:
 			start_level_21()
+		22:
+			start_level_22()
 
 
 func start_level_1_direct():
@@ -1155,6 +1415,10 @@ func start_level_20_direct():
 
 func start_level_21_direct():
 	start_level_21()
+
+
+func start_level_22_direct():
+	start_level_22()
 
 
 func start_bonus_level_direct():
@@ -1436,6 +1700,16 @@ func style_window_button(btn):
 	btn.add_theme_color_override("font_color", Color(0.05, 0.05, 0.05))
 	btn.add_theme_color_override("font_hover_color", Color(0.03, 0.03, 0.03))
 	btn.add_theme_color_override("font_pressed_color", Color(0.02, 0.02, 0.02))
+	btn.add_theme_font_size_override("font_size", 14)
+
+func style_completed_button(btn: Button):
+	var normal = make_soft_button_style(Color(0.24, 0.68, 0.28), Color(0.10, 0.42, 0.14), 4)
+	var disabled = make_soft_button_style(Color(0.24, 0.68, 0.28), Color(0.10, 0.42, 0.14), 4)
+
+	btn.add_theme_stylebox_override("normal", normal)
+	btn.add_theme_stylebox_override("disabled", disabled)
+	btn.add_theme_color_override("font_color", Color(1, 1, 1))
+	btn.add_theme_color_override("font_disabled_color", Color(1, 1, 1))
 	btn.add_theme_font_size_override("font_size", 14)
 
 

@@ -1,125 +1,62 @@
 extends Node2D
 
+const ArticleData = preload("res://data/ArticleData.gd")
+
 signal level_finished
+signal level_failed
 
 @onready var background = $ColorRect
 @onready var text_label = $Label
 @onready var agree_button = $AgreeButton
 @onready var no_button = $NoButton
 
-var control_label
 var window_size = Vector2(856, 520)
+var last_window_size = Vector2.ZERO
 
-var step = 0
-var deny_attempts = 0
+var article_number = 1
+var screen_state = "article"
 
-var mistakes = 0
-var max_mistakes = 3
+var code_length = 4
+var max_attempts = 20
 
-var glitching = false
-var glitch_time = 0.0
-var original_label_position = Vector2.ZERO
+var secret_code = ""
+var current_guess = ""
+var attempts = 0
+var guess_history = []
 
-var flash_time = 0.0
-var flash_original_color = Color(0.96, 0.96, 0.92)
-
-var typing = false
-var full_text = ""
-var typing_index = 0
-var typing_speed = 0.028
-var typing_timer = 0.0
-
-var buttons_locked = false
-var unlock_timer = 0.0
-
-var auto_changing = false
-var auto_change_time = 0.0
-var auto_change_step = 0
-var auto_change_delay = 1.4
+var history_label: Label
 
 
 func _ready():
+	randomize()
 	start_level()
 
 
+func set_article_number(new_article_number: int):
+	article_number = new_article_number
+
+	if is_inside_tree():
+		start_level()
+
+
 func set_window_size(new_size):
+	if window_size == new_size:
+		return
+
 	window_size = new_size
 	layout_ui()
+	last_window_size = window_size
 
 
 func start_level():
-	step = 0
-	deny_attempts = 0
-	mistakes = 0
-
-	auto_changing = false
-	auto_change_time = 0.0
-	auto_change_step = 0
-	auto_change_delay = 1.4
-
-	glitching = false
-	flash_time = 0.0
-	typing = false
-	buttons_locked = false
+	screen_state = "article"
+	secret_code = ""
+	current_guess = ""
+	attempts = 0
+	guess_history.clear()
 
 	setup_ui()
-
-	background.color = Color(0.96, 0.96, 0.92)
-	text_label.modulate = Color(0.10, 0.10, 0.10)
-
-	agree_button.visible = true
-	no_button.visible = true
-	agree_button.disabled = false
-	no_button.disabled = false
-
-	agree_button.text = "Povolit vše"
-	no_button.text = "Obnovit nesouhlasím"
-
-	style_button_soft_xp(agree_button)
-	style_button_soft_xp(no_button)
-	center_buttons()
-
-	if not agree_button.pressed.is_connected(_on_agree_pressed):
-		agree_button.pressed.connect(_on_agree_pressed)
-
-	if not no_button.pressed.is_connected(_on_no_pressed):
-		no_button.pressed.connect(_on_no_pressed)
-
-	update_system_control_label()
-	set_text("NASTAVENÍ SOUKROMÍ\n\nSystém tvrdí, že tlačítko NESOUHLASÍM lze obnovit v nastavení.")
-
-
-func _process(delta):
-	layout_ui()
-	update_system_control_label_position()
-
-	if typing:
-		handle_typing(delta)
-
-	if buttons_locked and not typing and not auto_changing:
-		unlock_timer -= delta
-
-		if unlock_timer <= 0:
-			unlock_buttons()
-
-	if glitching:
-		glitch_time -= delta
-
-		text_label.position.x = original_label_position.x + randf_range(-3, 3)
-		text_label.position.y = original_label_position.y + randf_range(-2, 2)
-
-		if glitch_time <= 0:
-			glitching = false
-			text_label.position = original_label_position
-
-	if flash_time > 0:
-		flash_time -= delta
-
-		if flash_time <= 0:
-			background.color = flash_original_color
-
-	if auto_changing:
-		handle_auto_change(delta)
+	show_article_screen()
 
 
 func setup_ui():
@@ -128,101 +65,337 @@ func setup_ui():
 	agree_button.z_index = 5
 	no_button.z_index = 5
 
+	background.color = Color(0.96, 0.96, 0.92)
+
+	if history_label == null or not is_instance_valid(history_label):
+		history_label = Label.new()
+		history_label.name = "HistoryLabel"
+		history_label.z_index = 5
+		history_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		history_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		history_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		history_label.add_theme_font_size_override("font_size", 16)
+		history_label.modulate = Color(0.10, 0.10, 0.10)
+		add_child(history_label)
+
+	if not agree_button.pressed.is_connected(_on_agree_pressed):
+		agree_button.pressed.connect(_on_agree_pressed)
+
+	if not no_button.pressed.is_connected(_on_no_pressed):
+		no_button.pressed.connect(_on_no_pressed)
+
+	layout_ui()
+	last_window_size = window_size
+
+
+func show_article_screen():
+	screen_state = "article"
+
+	background.color = Color(0.96, 0.96, 0.92)
+
+	text_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+	text_label.modulate = Color(0.10, 0.10, 0.10)
+
+	if history_label:
+		history_label.visible = false
+		history_label.text = ""
+
+	agree_button.visible = true
+	no_button.visible = true
+	agree_button.disabled = false
+	no_button.disabled = false
+
+	agree_button.text = "Souhlasím"
+	no_button.text = "Nesouhlasím"
+
+	style_green_button(agree_button)
+	style_red_button(no_button)
+
 	layout_ui()
 
-	if control_label == null or not is_instance_valid(control_label):
-		control_label = Label.new()
-		control_label.name = "SystemControlLabel"
-		control_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		control_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		control_label.size = Vector2(320, 24)
-		control_label.add_theme_font_size_override("font_size", 13)
-		control_label.modulate = Color(1.0, 0.20, 0.20)
-		control_label.z_index = 10
-		add_child(control_label)
 
-	update_system_control_label_position()
+func show_code_game_screen():
+	screen_state = "code_game"
+
+	secret_code = generate_secret_code()
+	current_guess = ""
+	attempts = 0
+	guess_history.clear()
+
+	background.color = Color(0.96, 0.96, 0.92)
+
+	agree_button.visible = false
+	no_button.visible = false
+	agree_button.disabled = true
+	no_button.disabled = true
+
+	if history_label:
+		history_label.visible = true
+		history_label.text = "Historie pokusů:\n"
+
+	text_label.modulate = Color(0.10, 0.10, 0.10)
+	update_code_game_text()
+
+	layout_ui()
+
+
+func generate_secret_code() -> String:
+	var code = ""
+
+	for i in range(code_length):
+		code += str(randi_range(0, 9))
+
+	print("kód: ", code)
+
+	return code
+
+
+func _process(_delta):
+	if last_window_size != window_size:
+		last_window_size = window_size
+		layout_ui()
+
+
+func _unhandled_input(event):
+	if screen_state != "code_game":
+		return
+
+	if not event is InputEventKey:
+		return
+
+	if not event.pressed or event.echo:
+		return
+
+	if event.keycode >= KEY_0 and event.keycode <= KEY_9:
+		add_digit(str(event.keycode - KEY_0))
+	elif event.keycode >= KEY_KP_0 and event.keycode <= KEY_KP_9:
+		add_digit(str(event.keycode - KEY_KP_0))
+	elif event.keycode == KEY_BACKSPACE:
+		remove_last_digit()
+	elif event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
+		if current_guess.length() == code_length:
+			check_guess()
+
+
+func add_digit(digit: String):
+	if current_guess.length() >= code_length:
+		return
+
+	current_guess += digit
+
+	if current_guess.length() == code_length:
+		check_guess()
+	else:
+		update_code_game_text()
+
+
+func remove_last_digit():
+	if current_guess.length() == 0:
+		return
+
+	current_guess = current_guess.substr(0, current_guess.length() - 1)
+	update_code_game_text()
+
+
+func check_guess():
+	attempts += 1
+
+	if current_guess == secret_code:
+		text_label.modulate = Color(0.05, 0.38, 0.10)
+		text_label.text = (
+			"OVĚŘENÍ SOUHLASU\n\n"
+			+ "Kód byl správně zadán.\n\n"
+			+ "Zadaný kód: " + current_guess + "\n"
+			+ "Počet pokusů: " + str(attempts) + "\n\n"
+			+ "Souhlas byl ověřen."
+		)
+
+		await get_tree().create_timer(1.4).timeout
+		level_finished.emit()
+		return
+
+	var hint = get_hint(secret_code, current_guess)
+	var hint_text = build_hint_text(hint)
+	var history_line = current_guess
+
+	if hint_text != "":
+		history_line += "  →  " + hint_text
+	else:
+		history_line += "  →  nic nesedí"
+
+	guess_history.append(history_line)
+	current_guess = ""
+
+	if attempts > max_attempts:
+		show_fail_screen()
+		return
+
+	update_code_game_text()
+
+
+func show_fail_screen():
+	text_label.modulate = Color(0.55, 0.0, 0.0)
+	text_label.text = (
+		"OVĚŘENÍ SOUHLASU\n\n"
+		+ "Limit pokusů byl vyčerpán.\n\n"
+		+ "Počet pokusů: " + str(attempts) + "/" + str(max_attempts) + "\n\n"
+		+ "Pro pokračování musíte souhlasit se všemi podmínkami."
+	)
+
+	await get_tree().create_timer(1.8).timeout
+	level_failed.emit()
+
+
+func get_hint(code: String, guess: String) -> Dictionary:
+	var correct_position = 0
+	var wrong_position = 0
+
+	var code_counts = {}
+	var guess_counts = {}
+
+	for i in range(code_length):
+		var code_digit = code.substr(i, 1)
+		var guess_digit = guess.substr(i, 1)
+
+		if code_digit == guess_digit:
+			correct_position += 1
+		else:
+			if not code_counts.has(code_digit):
+				code_counts[code_digit] = 0
+			code_counts[code_digit] += 1
+
+			if not guess_counts.has(guess_digit):
+				guess_counts[guess_digit] = 0
+			guess_counts[guess_digit] += 1
+
+	for digit in guess_counts.keys():
+		if code_counts.has(digit):
+			wrong_position += min(guess_counts[digit], code_counts[digit])
+
+	return {
+		"correct_position": correct_position,
+		"wrong_position": wrong_position
+	}
+
+
+func build_hint_text(hint: Dictionary) -> String:
+	var text = ""
+
+	if hint["correct_position"] > 0:
+		text += str(hint["correct_position"]) + " na správné pozici"
+
+	if hint["wrong_position"] > 0:
+		if text != "":
+			text += ", "
+		text += str(hint["wrong_position"]) + " na špatné pozici"
+
+	return text
+
+
+func update_code_game_text():
+	var visible_guess = current_guess
+
+	while visible_guess.length() < code_length:
+		visible_guess += "_"
+
+	text_label.text = (
+		"OVĚŘENÍ SOUHLASU\n\n"
+		+ "Zadej 4místný kód pomocí klávesnice.\n"
+		+ "Číslice mohou být od 0 do 9 a mohou se opakovat.\n\n"
+		+ "Aktuální zadání: " + visible_guess + "\n"
+		+ "Počet pokusů: " + str(attempts) + "/" + str(max_attempts)
+	)
+
+	update_history_text()
+
+
+func update_history_text():
+	if history_label == null or not is_instance_valid(history_label):
+		return
+
+	var history_text = "Historie pokusů:\n"
+
+	for item in guess_history:
+		history_text += item + "\n"
+
+	history_label.text = history_text
 
 
 func layout_ui():
 	background.position = Vector2.ZERO
 	background.size = window_size
 
-	text_label.size = Vector2(window_size.x - 130, 210)
-	text_label.position = Vector2(65, 92)
-	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	text_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	text_label.add_theme_font_size_override("font_size", 21)
+	if screen_state == "article":
+		text_label.position = Vector2(70, 40)
+		text_label.size = Vector2(window_size.x - 140, window_size.y - 145)
+		text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		text_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text_label.add_theme_font_size_override("font_size", 20)
 
-	agree_button.size = Vector2(185, 36)
-	no_button.size = Vector2(185, 36)
+		if history_label:
+			history_label.visible = false
 
-	center_buttons()
+	elif screen_state == "code_game":
+		text_label.position = Vector2(60, 52)
+		text_label.size = Vector2((window_size.x / 2.0) - 80, window_size.y - 120)
+		text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		text_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text_label.add_theme_font_size_override("font_size", 18)
 
-	original_label_position = text_label.position
+		if history_label:
+			history_label.visible = true
+			history_label.position = Vector2(window_size.x / 2.0 + 20, 52)
+			history_label.size = Vector2((window_size.x / 2.0) - 70, window_size.y - 120)
+			history_label.add_theme_font_size_override("font_size", 13)
 
+	no_button.size = Vector2(180, 44)
+	agree_button.size = Vector2(180, 44)
 
-func center_buttons():
-	if agree_button == null or no_button == null:
-		return
+	var button_y = window_size.y - 68
 
-	if agree_button.visible and no_button.visible:
-		agree_button.position = Vector2(window_size.x / 2 - 205, 330)
-		no_button.position = Vector2(window_size.x / 2 + 20, 330)
-	elif agree_button.visible:
-		agree_button.position = Vector2(window_size.x / 2 - agree_button.size.x / 2, 330)
-	elif no_button.visible:
-		no_button.position = Vector2(window_size.x / 2 - no_button.size.x / 2, 330)
-
-
-func update_system_control_label_position():
-	if control_label == null or not is_instance_valid(control_label):
-		return
-
-	control_label.position = Vector2(window_size.x - 340, window_size.y - 34)
-	control_label.text = GameState.get_system_control_text()
-
-
-func update_system_control_label():
-	if control_label != null and is_instance_valid(control_label):
-		control_label.text = GameState.get_system_control_text()
+	if screen_state == "article":
+		no_button.position = Vector2(window_size.x / 2.0 - 220, button_y)
+		agree_button.position = Vector2(window_size.x / 2.0 + 40, button_y)
 
 
-func style_button_soft_xp(button):
-	var normal = make_button_style(
-		Color(0.94, 0.94, 0.91),
-		Color(0.43, 0.48, 0.58),
-		5
-	)
+func _on_agree_pressed():
+	if screen_state == "article":
+		show_code_game_screen()
 
-	var hover = make_button_style(
-		Color(0.98, 0.99, 1.0),
-		Color(0.22, 0.47, 0.88),
-		5
-	)
 
-	var pressed = make_button_style(
-		Color(0.76, 0.86, 0.98),
-		Color(0.16, 0.33, 0.70),
-		5
-	)
+func _on_no_pressed():
+	if screen_state == "article":
+		level_failed.emit()
 
-	var disabled = make_button_style(
-		Color(0.84, 0.84, 0.82),
-		Color(0.64, 0.64, 0.64),
-		5
-	)
+
+func style_green_button(button: Button):
+	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
+	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
+	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
 	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
+	button.add_theme_color_override("font_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+	button.add_theme_font_size_override("font_size", 17)
 
-	button.add_theme_color_override("font_color", Color(0.04, 0.04, 0.04))
-	button.add_theme_color_override("font_hover_color", Color(0.02, 0.02, 0.02))
-	button.add_theme_color_override("font_pressed_color", Color(0.02, 0.02, 0.02))
-	button.add_theme_color_override("font_disabled_color", Color(0.43, 0.43, 0.43))
-	button.add_theme_font_size_override("font_size", 14)
+
+func style_red_button(button: Button):
+	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
+	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
+	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
+
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_color_override("font_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+	button.add_theme_font_size_override("font_size", 17)
 
 
 func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
@@ -237,237 +410,4 @@ func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
 	sb.corner_radius_top_right = radius
 	sb.corner_radius_bottom_left = radius
 	sb.corner_radius_bottom_right = radius
-	sb.shadow_color = Color(1, 1, 1, 0.20)
-	sb.shadow_size = 1
 	return sb
-
-
-func set_text(new_text):
-	lock_buttons()
-	full_text = new_text
-	text_label.text = ""
-	typing_index = 0
-	typing_timer = 0.0
-	typing = true
-
-
-func handle_typing(delta):
-	typing_timer += delta
-
-	if typing_timer >= typing_speed:
-		typing_timer = 0.0
-
-		if typing_index < full_text.length():
-			text_label.text += full_text[typing_index]
-			typing_index += 1
-		else:
-			typing = false
-			unlock_timer = 0.45
-
-
-func lock_buttons():
-	buttons_locked = true
-	agree_button.disabled = true
-	no_button.disabled = true
-
-
-func unlock_buttons():
-	buttons_locked = false
-	agree_button.disabled = false
-	no_button.disabled = false
-
-
-func _on_agree_pressed():
-	if buttons_locked or typing or auto_changing:
-		return
-
-	step += 1
-
-	GameState.add_system_control(15)
-	update_system_control_label()
-
-	add_mistake("Systém zaznamenal povolení doporučeného nastavení.")
-
-	if mistakes >= max_mistakes:
-		return
-
-	if step == 1:
-		no_button.visible = false
-		center_buttons()
-		text_label.modulate = Color(0.50, 0.0, 0.0)
-		set_text(
-			"Systém přijal povolení všeho.\n\n"
-			+ "Tím se tlačítko NESOUHLASÍM neobnoví.\n\n"
-			+ "Chyby: " + str(mistakes) + "/" + str(max_mistakes)
-		)
-		agree_button.text = "Vrátit se"
-		start_glitch()
-
-	elif step == 2:
-		no_button.visible = true
-		agree_button.text = "Povolit vše"
-		no_button.text = "Obnovit nesouhlasím"
-		center_buttons()
-		text_label.modulate = Color(0.10, 0.10, 0.10)
-		set_text(
-			"Nastavení bylo vráceno.\n\n"
-			+ "Ale systém si vaši ochotu zapamatoval.\n\n"
-			+ "Chyby: " + str(mistakes) + "/" + str(max_mistakes)
-		)
-		start_glitch()
-
-	else:
-		text_label.modulate = Color(0.50, 0.0, 0.0)
-		set_text(
-			"Povolit vše je rychlé.\n\n"
-			+ "Ale rychlé neznamená správné.\n\n"
-			+ "Chyby: " + str(mistakes) + "/" + str(max_mistakes)
-		)
-		start_glitch()
-
-
-func _on_no_pressed():
-	if buttons_locked or typing or auto_changing:
-		return
-
-	deny_attempts += 1
-
-	if deny_attempts == 1:
-		GameState.reduce_system_control(5)
-		update_system_control_label()
-
-		text_label.modulate = Color(0.10, 0.10, 0.10)
-		set_text("Požadavek přijat.\n\nObnovuji tlačítko NESOUHLASÍM...")
-		agree_button.visible = false
-		no_button.visible = false
-		center_buttons()
-		start_glitch()
-
-		await get_tree().create_timer(1.2).timeout
-		start_auto_privacy_change()
-
-	elif deny_attempts == 2:
-		GameState.reduce_system_control(5)
-		update_system_control_label()
-
-		text_label.modulate = Color(0.50, 0.0, 0.0)
-		set_text("Obnova tlačítka vyžaduje povolení sledování.\n\nSystém čeká na vaši spolupráci.")
-		agree_button.visible = true
-		no_button.visible = true
-		agree_button.text = "Povolit sledování"
-		no_button.text = "Odmítnout spolupráci"
-		center_buttons()
-		start_glitch()
-
-	else:
-		GameState.reduce_system_control(5)
-		update_system_control_label()
-
-		agree_button.visible = false
-		no_button.visible = false
-		center_buttons()
-		text_label.modulate = Color(0.10, 0.10, 0.10)
-		set_text("Odmítnutí spolupráce bylo uloženo.\n\nPřesměrovávám na kontrolu identity...")
-		start_glitch()
-
-		await get_tree().create_timer(2.4).timeout
-		level_finished.emit()
-
-
-func add_mistake(reason):
-	mistakes += 1
-
-	auto_change_delay = max(0.7, auto_change_delay - 0.2)
-
-	start_glitch()
-
-	if mistakes >= max_mistakes:
-		trigger_level_reset(reason)
-
-
-func trigger_level_reset(reason):
-	lock_buttons()
-	auto_changing = false
-
-	agree_button.visible = false
-	no_button.visible = false
-	center_buttons()
-
-	background.color = Color(0.95, 0.82, 0.82)
-	text_label.modulate = Color(0.55, 0.0, 0.0)
-	text_label.text = (
-		"KOREKCE SOUKROMÍ\n\n"
-		+ reason
-		+ "\n\nDoporučené nastavení bylo obnoveno.\n"
-		+ "Kontrola systému: " + str(GameState.system_control) + "%\n\n"
-		+ "Level bude obnoven."
-	)
-
-	await get_tree().create_timer(2.8).timeout
-	start_level()
-
-
-func start_auto_privacy_change():
-	auto_changing = true
-	auto_change_time = 0.0
-	auto_change_step = 0
-	text_label.modulate = Color(0.10, 0.10, 0.10)
-	text_label.text = ""
-	lock_buttons()
-
-
-func handle_auto_change(delta):
-	auto_change_time += delta
-
-	if auto_change_time < auto_change_delay:
-		return
-
-	auto_change_time = 0.0
-	auto_change_step += 1
-
-	if auto_change_step == 1:
-		text_label.text = "NASTAVENÍ SOUKROMÍ\n\nTlačítko NESOUHLASÍM: OBNOVUJE SE\nSledování: VYPNUTO\nMikrofon: ZAPNUTO\nKamera: ZAPNUTO"
-		start_glitch()
-
-	elif auto_change_step == 2:
-		text_label.text = "NASTAVENÍ SOUKROMÍ\n\nTlačítko NESOUHLASÍM: OBNOVUJE SE\nSledování: VYPNUTO\nMikrofon: VYPNUTO\nKamera: ZAPNUTO"
-		start_glitch()
-
-	elif auto_change_step == 3:
-		text_label.text = "NASTAVENÍ SOUKROMÍ\n\nTlačítko NESOUHLASÍM: TÉMĚŘ HOTOVO\nSledování: VYPNUTO\nMikrofon: VYPNUTO\nKamera: VYPNUTO"
-		start_glitch()
-
-	elif auto_change_step == 4:
-		text_label.modulate = Color(0.55, 0.0, 0.0)
-		text_label.text = "CHYBA SYNCHRONIZACE\n\nNESOUHLASÍM není kompatibilní s doporučeným nastavením."
-		start_glitch()
-
-	elif auto_change_step == 5:
-		text_label.text = "Obnovuji doporučené nastavení..."
-		start_glitch()
-
-	elif auto_change_step == 6:
-		text_label.modulate = Color(0.10, 0.10, 0.10)
-		text_label.text = "NASTAVENÍ SOUKROMÍ\n\nTlačítko NESOUHLASÍM: ODEBRÁNO\nSledování: ZAPNUTO\nMikrofon: ZAPNUTO\nKamera: ZAPNUTO"
-		start_glitch()
-
-	elif auto_change_step == 7:
-		auto_changing = false
-		agree_button.visible = true
-		no_button.visible = true
-		agree_button.text = "Přijmout doporučení"
-		no_button.text = "Zkusit znovu"
-		center_buttons()
-		set_text("Doporučené nastavení bylo obnoveno.\n\nChcete zkusit obnovit NESOUHLASÍM znovu?")
-
-
-func start_glitch():
-	glitching = true
-	glitch_time = 0.35
-	start_flash()
-
-
-func start_flash():
-	flash_original_color = background.color
-	background.color = Color(0.95, 0.82, 0.82)
-	flash_time = 0.07

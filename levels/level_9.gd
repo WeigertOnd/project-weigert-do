@@ -1,29 +1,47 @@
 extends Node2D
 
+const ArticleData = preload("res://data/ArticleData.gd")
+
 signal level_finished
+signal level_failed
 
 @onready var background = $ColorRect
 @onready var agree_button = $AgreeButton
 @onready var no_button = $NoButton
-@onready var progress_back = $ProgressBack
-@onready var progress_fill = $ProgressBack/ProgressFill
-@onready var progress_label = $ProgressLabel
-@onready var error_label = $ErrorLabel
+
+var article_label: Label
 
 var window_size = Vector2(856, 520)
 var last_window_size = Vector2.ZERO
-var progress = 0.0
+
+var article_number = 1
 var completed = false
-var error_time = 0.0
+var failed = false
+
+var progress = 0.0
+var progress_max = 100.0
+var click_power = 5.0
+var decay_speed = 8.0
+var swap_chance = 0.33
+
 var buttons_swapped = false
 
-var fill_per_click = 11.5
-var drain_per_second = 18.0
-var swap_chance = 0.28
+var bar_position = Vector2.ZERO
+var bar_size = Vector2.ZERO
+
+var fail_freeze_time = 0.9
 
 
 func _ready():
+	randomize()
 	start_level()
+
+
+func set_article_number(new_article_number: int):
+	article_number = new_article_number
+
+	if is_inside_tree():
+		start_level()
 
 
 func set_window_size(new_size):
@@ -36,61 +54,56 @@ func set_window_size(new_size):
 
 
 func start_level():
-	progress = 0.0
 	completed = false
-	error_time = 0.0
+	failed = false
+	progress = 0.0
 	buttons_swapped = false
 
 	setup_ui()
+
 	background.color = Color(0.96, 0.96, 0.92)
-	error_label.visible = false
+
+	article_label.visible = true
+	article_label.modulate = Color(0.10, 0.10, 0.10)
+	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+
 	agree_button.text = "Souhlasím"
 	no_button.text = "Nesouhlasím"
+
 	agree_button.disabled = false
 	no_button.disabled = false
-	update_progress_bar()
+	agree_button.visible = true
+	no_button.visible = true
 
+	style_green_button(agree_button)
+	style_red_button(no_button)
 
-func _process(delta):
-	if last_window_size != window_size:
-		last_window_size = window_size
-		layout_ui()
-
-	if completed:
-		return
-
-	if error_time > 0:
-		error_time -= delta
-		if error_time <= 0:
-			error_label.visible = false
-			background.color = Color(0.96, 0.96, 0.92)
-			agree_button.disabled = false
-			no_button.disabled = false
-		return
-
-	if progress > 0:
-		progress = max(0.0, progress - drain_per_second * delta)
-		update_progress_bar()
+	layout_ui()
+	queue_redraw()
 
 
 func setup_ui():
-	background.z_index = 0
-	progress_back.z_index = 5
-	progress_fill.z_index = 6
-	progress_label.z_index = 7
-	error_label.z_index = 8
+	background.z_index = -10
 	agree_button.z_index = 10
 	no_button.z_index = 10
 
-	style_button_soft_xp(agree_button)
-	style_button_soft_xp(no_button)
-	style_progress_back()
+	if article_label == null or not is_instance_valid(article_label):
+		article_label = Label.new()
+		article_label.name = "ArticleLabel"
+		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		article_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		article_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		article_label.add_theme_font_size_override("font_size", 18)
+		article_label.modulate = Color(0.10, 0.10, 0.10)
+		article_label.z_index = 5
+		add_child(article_label)
 
 	agree_button.focus_mode = Control.FOCUS_NONE
 	no_button.focus_mode = Control.FOCUS_NONE
 
 	if not agree_button.pressed.is_connected(_on_agree_pressed):
 		agree_button.pressed.connect(_on_agree_pressed)
+
 	if not no_button.pressed.is_connected(_on_no_pressed):
 		no_button.pressed.connect(_on_no_pressed)
 
@@ -98,94 +111,107 @@ func setup_ui():
 	last_window_size = window_size
 
 
+func _process(delta):
+	if last_window_size != window_size:
+		last_window_size = window_size
+		layout_ui()
+
+	if not completed and not failed:
+		progress -= decay_speed * delta
+		progress = clamp(progress, 0.0, progress_max)
+
+	queue_redraw()
+
+
 func layout_ui():
 	background.position = Vector2.ZERO
 	background.size = window_size
 
-	progress_back.position = Vector2(window_size.x / 2 - 250, 166)
-	progress_back.size = Vector2(500, 34)
+	if article_label:
+		article_label.position = Vector2(70, 36)
+		article_label.size = Vector2(window_size.x - 140, window_size.y - 230)
+		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		article_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		article_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		article_label.add_theme_font_size_override("font_size", 18)
 
-	progress_fill.position = Vector2(3, 3)
-	progress_fill.size = Vector2(0, progress_back.size.y - 6)
+	bar_size = Vector2(window_size.x - 180, 26)
+	bar_position = Vector2(90, window_size.y - 126)
 
-	progress_label.position = Vector2(window_size.x / 2 - 160, 216)
-	progress_label.size = Vector2(320, 28)
-	progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	progress_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	progress_label.add_theme_font_size_override("font_size", 15)
-	progress_label.modulate = Color(0.12, 0.12, 0.12)
-
-	error_label.position = Vector2(window_size.x / 2 - 170, 262)
-	error_label.size = Vector2(340, 42)
-	error_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	error_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	error_label.add_theme_font_size_override("font_size", 22)
-	error_label.modulate = Color(0.65, 0.0, 0.0)
-
-	var button_size = Vector2(160, 42)
-	var spacing = 34
+	var button_size = Vector2(180, 44)
+	var spacing = 80
 	var total_width = button_size.x * 2 + spacing
-	var left_pos = Vector2(window_size.x / 2 - total_width / 2, 340)
-	var right_pos = Vector2(left_pos.x + button_size.x + spacing, 340)
+	var start_x = window_size.x / 2.0 - total_width / 2.0
+	var button_y = window_size.y - 68
 
-	agree_button.size = button_size
 	no_button.size = button_size
+	agree_button.size = button_size
 
 	if buttons_swapped:
-		agree_button.position = right_pos
-		no_button.position = left_pos
+		# Prohozené pozice
+		agree_button.position = Vector2(start_x, button_y)
+		no_button.position = Vector2(start_x + button_size.x + spacing, button_y)
 	else:
-		agree_button.position = left_pos
-		no_button.position = right_pos
+		# Start: Nesouhlasím vlevo, Souhlasím vpravo
+		no_button.position = Vector2(start_x, button_y)
+		agree_button.position = Vector2(start_x + button_size.x + spacing, button_y)
 
-	update_progress_bar()
+
+func _draw():
+	draw_progress_bar()
 
 
-func _on_no_pressed():
-	if completed or error_time > 0:
+func draw_progress_bar():
+	var bg_rect = Rect2(bar_position, bar_size)
+	var fill_width = bar_size.x * (progress / progress_max)
+	var fill_rect = Rect2(bar_position, Vector2(fill_width, bar_size.y))
+
+	# pozadí baru
+	draw_rect(bg_rect, Color(0.12, 0.25, 0.32), true)
+
+	# vyplnění baru
+	if fill_width > 0:
+		draw_rect(fill_rect, Color(0.28, 0.78, 0.38), true)
+
+	# okraj baru
+	draw_rect(bg_rect, Color(0.05, 0.18, 0.24), false, 3.0)
+
+	# procenta nad barem
+	var percent_text = str(roundi(progress)) + "%"
+
+	draw_string(
+		ThemeDB.fallback_font,
+		bar_position + Vector2(bar_size.x / 2.0 - 12, -12),
+		percent_text,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		16,
+		Color(0.10, 0.10, 0.10)
+	)
+
+
+func _on_agree_pressed():
+	if completed or failed:
 		return
 
-	progress = min(100.0, progress + fill_per_click)
-	GameState.reduce_system_control(1)
-	update_progress_bar()
+	progress += click_power
+	progress = clamp(progress, 0.0, progress_max)
 
-	if progress >= 100.0:
-		complete_level()
+	if progress >= progress_max:
+		finish_success()
 		return
 
 	if randf() < swap_chance:
 		swap_buttons()
 
+	queue_redraw()
 
-func _on_agree_pressed():
-	if completed or error_time > 0:
+
+func _on_no_pressed():
+	if completed or failed:
 		return
 
-	GameState.add_system_control(12)
-	progress = 0.0
-	update_progress_bar()
-	show_error()
-
-
-func complete_level():
-	completed = true
-	progress = 100.0
-	update_progress_bar()
-	background.color = Color(0.84, 0.94, 0.84)
-	agree_button.disabled = true
-	no_button.disabled = true
-
-	await get_tree().create_timer(0.9).timeout
-	level_finished.emit()
-
-
-func show_error():
-	error_time = 1.05
-	background.color = Color(0.95, 0.82, 0.82)
-	error_label.text = "CHYBA"
-	error_label.visible = true
-	agree_button.disabled = true
-	no_button.disabled = true
+	fail_level()
 
 
 func swap_buttons():
@@ -193,49 +219,88 @@ func swap_buttons():
 	layout_ui()
 
 
-func update_progress_bar():
-	if progress_fill == null or not is_instance_valid(progress_fill):
+func finish_success():
+	if completed:
 		return
 
-	var ratio = clamp(progress / 100.0, 0.0, 1.0)
-	progress_fill.size = Vector2(max(0.0, progress_back.size.x - 6) * ratio, max(0.0, progress_back.size.y - 6))
-	progress_fill.color = Color(0.12, 0.52, 0.86) if ratio < 0.82 else Color(0.12, 0.64, 0.28)
+	completed = true
 
-	if progress_label:
-		progress_label.text = "Dokončení: " + str(int(progress)) + " %"
+	agree_button.disabled = true
+	no_button.disabled = true
 
+	background.color = Color(0.84, 0.94, 0.84)
 
-func style_progress_back():
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.86, 0.86, 0.84)
-	panel_style.border_color = Color(0.38, 0.43, 0.52)
-	panel_style.border_width_left = 1
-	panel_style.border_width_top = 1
-	panel_style.border_width_right = 1
-	panel_style.border_width_bottom = 1
-	panel_style.corner_radius_top_left = 4
-	panel_style.corner_radius_top_right = 4
-	panel_style.corner_radius_bottom_left = 4
-	panel_style.corner_radius_bottom_right = 4
-	progress_back.add_theme_stylebox_override("panel", panel_style)
+	article_label.modulate = Color(0.05, 0.38, 0.10)
+	article_label.text = (
+		"SOUHLAS DOPLNĚN\n\n"
+		+ "Podařilo se ti doplnit celý souhlas.\n\n"
+		+ "Podmínka byla úspěšně potvrzena."
+	)
+
+	GameState.reduce_system_control(5)
+
+	await get_tree().create_timer(1.0).timeout
+	level_finished.emit()
 
 
-func style_button_soft_xp(button):
-	var normal = make_button_style(Color(0.94, 0.94, 0.91), Color(0.43, 0.48, 0.58), 5)
-	var hover = make_button_style(Color(0.98, 0.99, 1.0), Color(0.22, 0.47, 0.88), 5)
-	var pressed = make_button_style(Color(0.76, 0.86, 0.98), Color(0.16, 0.33, 0.70), 5)
-	var disabled = make_button_style(Color(0.84, 0.84, 0.82), Color(0.64, 0.64, 0.64), 5)
+func fail_level():
+	if failed:
+		return
+
+	failed = true
+
+	agree_button.disabled = true
+	no_button.disabled = true
+
+	background.color = Color(0.95, 0.82, 0.82)
+
+	article_label.modulate = Color(0.55, 0.0, 0.0)
+	article_label.text = (
+		"SOUHLAS NEBYL DOPLNĚN\n\n"
+		+ "Klikl/a jsi na Nesouhlasím.\n\n"
+		+ "Pro pokračování musíte souhlasit se všemi podmínkami."
+	)
+
+	GameState.add_system_control(8)
+
+	await get_tree().create_timer(fail_freeze_time).timeout
+	level_failed.emit()
+
+
+func style_green_button(button: Button):
+	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
+	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
+	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
+	var disabled = make_button_style(Color(0.52, 0.62, 0.52), Color(0.32, 0.42, 0.32), 7)
 
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
 	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_stylebox_override("disabled", disabled)
 
-	button.add_theme_color_override("font_color", Color(0.04, 0.04, 0.04))
-	button.add_theme_color_override("font_hover_color", Color(0.02, 0.02, 0.02))
-	button.add_theme_color_override("font_pressed_color", Color(0.02, 0.02, 0.02))
-	button.add_theme_color_override("font_disabled_color", Color(0.43, 0.43, 0.43))
-	button.add_theme_font_size_override("font_size", 14)
+	button.add_theme_color_override("font_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
+	button.add_theme_font_size_override("font_size", 17)
+
+
+func style_red_button(button: Button):
+	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
+	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
+	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
+	var disabled = make_button_style(Color(0.62, 0.48, 0.48), Color(0.42, 0.30, 0.30), 7)
+
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("disabled", disabled)
+
+	button.add_theme_color_override("font_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
+	button.add_theme_font_size_override("font_size", 17)
 
 
 func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:

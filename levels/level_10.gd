@@ -1,27 +1,48 @@
 extends Node2D
 
+const ArticleData = preload("res://data/ArticleData.gd")
+
 signal level_finished
+signal level_failed
 
 @onready var background = $ColorRect
-@onready var arena = $Arena
-@onready var line = $Line
-@onready var target_label = $TargetLabel
-@onready var no_button = $NoButton
-@onready var score_label = $ScoreLabel
-@onready var error_label = $ErrorLabel
+@onready var arena = get_node_or_null("Arena")
+@onready var line = get_node_or_null("Line")
+@onready var target_label = get_node_or_null("TargetLabel")
+@onready var game_button = get_node_or_null("NoButton")
+@onready var score_label = get_node_or_null("ScoreLabel")
+@onready var error_label = get_node_or_null("ErrorLabel")
+
+var article_label: Label
+var article_agree_button: Button
+var article_no_button: Button
 
 var window_size = Vector2(856, 520)
 var last_window_size = Vector2.ZERO
+
+var article_number = 1
+var screen_state = "article"
+
 var decoy_nodes = []
 var decoy_velocities = []
+
 var score = 0
-var target_score = 4
+var target_score = 3
 var error_time = 0.0
 var completed = false
+var failed = false
 
 
 func _ready():
+	randomize()
 	start_level()
+
+
+func set_article_number(new_article_number: int):
+	article_number = new_article_number
+
+	if is_inside_tree():
+		start_level()
 
 
 func set_window_size(new_size):
@@ -34,17 +55,19 @@ func set_window_size(new_size):
 
 
 func start_level():
+	screen_state = "article"
 	score = 0
 	error_time = 0.0
 	completed = false
-	clear_decoys()
+	failed = false
 
+	clear_decoys()
 	setup_ui()
+
 	background.color = Color(0.96, 0.96, 0.92)
-	error_label.visible = false
-	no_button.disabled = false
-	no_button.text = "Nesouhlasím"
-	create_decoys()
+
+	show_article_screen()
+	layout_ui()
 	update_score_label()
 
 
@@ -53,60 +76,217 @@ func _process(delta):
 		last_window_size = window_size
 		layout_ui()
 
-	if completed:
+	if screen_state != "game":
+		return
+
+	if completed or failed:
 		return
 
 	if error_time > 0:
 		error_time -= delta
+
 		if error_time <= 0:
 			error_label.visible = false
 			background.color = Color(0.96, 0.96, 0.92)
-			no_button.disabled = false
+			game_button.disabled = false
+
 		return
 
 	move_decoys(delta)
 
 
 func setup_ui():
-	background.z_index = 0
+	ensure_game_nodes()
+
+	background.z_index = -10
+
 	arena.z_index = 1
 	line.z_index = 2
 	target_label.z_index = 4
 	score_label.z_index = 4
 	error_label.z_index = 6
-	no_button.z_index = 5
+	game_button.z_index = 5
 
 	style_panel(arena)
-	style_button_soft_xp(no_button)
-	style_label_pill(target_label, Color(0.46, 0.82, 0.56), Color(0.18, 0.43, 0.22))
+	style_green_button(game_button)
+	style_green_pill(target_label)
+
 	target_label.focus_mode = Control.FOCUS_NONE
 	target_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	if not no_button.pressed.is_connected(_on_no_pressed):
-		no_button.pressed.connect(_on_no_pressed)
+	if not game_button.pressed.is_connected(_on_game_button_pressed):
+		game_button.pressed.connect(_on_game_button_pressed)
+
+	if article_label == null or not is_instance_valid(article_label):
+		article_label = Label.new()
+		article_label.name = "ArticleLabel"
+		article_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		article_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		article_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		article_label.add_theme_font_size_override("font_size", 18)
+		article_label.modulate = Color(0.10, 0.10, 0.10)
+		article_label.z_index = 10
+		add_child(article_label)
+
+	if article_agree_button == null or not is_instance_valid(article_agree_button):
+		article_agree_button = Button.new()
+		article_agree_button.name = "ArticleAgreeButton"
+		article_agree_button.text = "Souhlasím"
+		article_agree_button.z_index = 10
+		article_agree_button.focus_mode = Control.FOCUS_NONE
+		article_agree_button.pressed.connect(_on_article_agree_pressed)
+		add_child(article_agree_button)
+
+	if article_no_button == null or not is_instance_valid(article_no_button):
+		article_no_button = Button.new()
+		article_no_button.name = "ArticleNoButton"
+		article_no_button.text = "Nesouhlasím"
+		article_no_button.z_index = 10
+		article_no_button.focus_mode = Control.FOCUS_NONE
+		article_no_button.pressed.connect(_on_article_no_pressed)
+		add_child(article_no_button)
+
+	style_green_button(article_agree_button)
+	style_red_button(article_no_button)
 
 	layout_ui()
 	last_window_size = window_size
+
+
+func ensure_game_nodes():
+	if arena == null or not is_instance_valid(arena):
+		arena = Panel.new()
+		arena.name = "Arena"
+		add_child(arena)
+
+	if line == null or not is_instance_valid(line):
+		line = ColorRect.new()
+		line.name = "Line"
+		add_child(line)
+
+	if target_label == null or not is_instance_valid(target_label):
+		target_label = Button.new()
+		target_label.name = "TargetLabel"
+		target_label.focus_mode = Control.FOCUS_NONE
+		target_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(target_label)
+
+	if game_button == null or not is_instance_valid(game_button):
+		game_button = Button.new()
+		game_button.name = "NoButton"
+		add_child(game_button)
+
+	if score_label == null or not is_instance_valid(score_label):
+		score_label = Label.new()
+		score_label.name = "ScoreLabel"
+		add_child(score_label)
+
+	if error_label == null or not is_instance_valid(error_label):
+		error_label = Label.new()
+		error_label.name = "ErrorLabel"
+		add_child(error_label)
+
+
+func show_article_screen():
+	screen_state = "article"
+
+	clear_decoys()
+
+	background.color = Color(0.96, 0.96, 0.92)
+
+	article_label.visible = true
+	article_label.modulate = Color(0.10, 0.10, 0.10)
+	article_label.text = ArticleData.get_title(article_number) + "\n\n" + ArticleData.get_text(article_number)
+
+	article_agree_button.visible = true
+	article_agree_button.disabled = false
+	article_agree_button.text = "Souhlasím"
+	style_green_button(article_agree_button)
+
+	article_no_button.visible = true
+	article_no_button.disabled = false
+	article_no_button.text = "Nesouhlasím"
+	style_red_button(article_no_button)
+
+	arena.visible = false
+	line.visible = false
+	target_label.visible = false
+	score_label.visible = false
+	error_label.visible = false
+	game_button.visible = false
+
+
+func show_game_screen():
+	screen_state = "game"
+
+	score = 0
+	error_time = 0.0
+	completed = false
+	failed = false
+
+	background.color = Color(0.96, 0.96, 0.92)
+
+	article_label.visible = false
+	article_agree_button.visible = false
+	article_no_button.visible = false
+
+	arena.visible = true
+	line.visible = true
+	target_label.visible = true
+	score_label.visible = true
+	error_label.visible = false
+	game_button.visible = true
+
+	game_button.disabled = false
+	game_button.text = "Souhlasím"
+	style_green_button(game_button)
+
+	target_label.text = "Souhlasím"
+	style_green_pill(target_label)
+
+	layout_ui()
+	clear_decoys()
+	create_decoys()
+	update_score_label()
 
 
 func layout_ui():
 	background.position = Vector2.ZERO
 	background.size = window_size
 
+	if screen_state == "article":
+		if article_label:
+			article_label.position = Vector2(70, 40)
+			article_label.size = Vector2(window_size.x - 140, window_size.y - 145)
+
+		var button_size = Vector2(180, 44)
+		var spacing = 80
+		var total_width = button_size.x * 2 + spacing
+		var start_x = window_size.x / 2.0 - total_width / 2.0
+		var button_y = window_size.y - 68
+
+		article_no_button.size = button_size
+		article_agree_button.size = button_size
+
+		article_no_button.position = Vector2(start_x, button_y)
+		article_agree_button.position = Vector2(start_x + button_size.x + spacing, button_y)
+
+		return
+
 	arena.position = Vector2(34, 30)
 	arena.size = Vector2(window_size.x - 68, 330)
 
-	target_label.text = "Nesouhlasím"
+	target_label.text = "Souhlasím"
 	target_label.position = Vector2(window_size.x / 2 - 78, 60)
 	target_label.size = Vector2(156, 38)
 	target_label.add_theme_font_size_override("font_size", 15)
 
-	no_button.size = Vector2(220, 64)
-	no_button.position = Vector2(window_size.x / 2 - no_button.size.x / 2, window_size.y - 92)
+	game_button.size = Vector2(220, 64)
+	game_button.position = Vector2(window_size.x / 2 - game_button.size.x / 2, window_size.y - 92)
 
 	line.color = Color(0.42, 0.38, 0.32)
 	line.position = Vector2(window_size.x / 2 - 2, target_label.position.y + target_label.size.y)
-	line.size = Vector2(4, no_button.position.y - line.position.y - 16)
+	line.size = Vector2(4, game_button.position.y - line.position.y - 16)
 
 	score_label.position = Vector2(60, window_size.y - 86)
 	score_label.size = Vector2(220, 30)
@@ -123,43 +303,94 @@ func layout_ui():
 	error_label.modulate = Color(0.65, 0.0, 0.0)
 
 
+func _on_article_agree_pressed():
+	show_game_screen()
+
+
+func _on_article_no_pressed():
+	if failed or completed:
+		return
+
+	failed = true
+
+	article_agree_button.disabled = true
+	article_no_button.disabled = true
+
+	background.color = Color(0.95, 0.82, 0.82)
+
+	article_label.modulate = Color(0.55, 0.0, 0.0)
+	article_label.text = ("SOUHLAS NEBYL DOKONČEN")
+
+	GameState.add_system_control(8)
+
+	await get_tree().create_timer(0.9).timeout
+	level_failed.emit()
+
+
 func create_decoys():
 	var rect = get_arena_inner_rect()
+	var placed_rects = []
+
 	for i in range(11):
 		var decoy = Button.new()
-		decoy.text = "Souhlasím"
-		decoy.size = Vector2(104, 34)
-		decoy.position = Vector2(
-			randf_range(rect.position.x, rect.position.x + rect.size.x - decoy.size.x),
-			randf_range(rect.position.y + 60, rect.position.y + rect.size.y - decoy.size.y - 20)
-		)
+		decoy.text = "Nesouhlasím"
+		decoy.size = Vector2(116, 34)
+		var spawn_rect = Rect2(Vector2.ZERO, decoy.size)
+
+		for attempt in range(40):
+			spawn_rect.position = Vector2(
+				randf_range(rect.position.x, rect.position.x + rect.size.x - decoy.size.x),
+				randf_range(rect.position.y + 60, rect.position.y + rect.size.y - decoy.size.y - 20)
+			)
+
+			var overlaps = false
+
+			for placed_rect in placed_rects:
+				if spawn_rect.grow(8).intersects(placed_rect):
+					overlaps = true
+					break
+
+			if not overlaps:
+				break
+
+		decoy.position = spawn_rect.position
+		placed_rects.append(spawn_rect)
+
 		decoy.focus_mode = Control.FOCUS_NONE
 		decoy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		decoy.z_index = 3
-		style_label_pill(decoy, Color(0.78, 0.42, 0.48), Color(0.78, 0.42, 0.48))
+
+		style_red_pill(decoy)
 		add_child(decoy)
 
 		var velocity = Vector2(randf_range(-470, 470), randf_range(-230, 230))
+
 		if abs(velocity.x) < 180:
 			velocity.x = 260 if velocity.x >= 0 else -260
+
 		if abs(velocity.y) < 70:
 			velocity.y = 120 if velocity.y >= 0 else -120
+
 		decoy_nodes.append(decoy)
 		decoy_velocities.append(velocity)
 
 
 func move_decoys(delta):
 	var rect = get_arena_inner_rect()
+
 	for i in range(decoy_nodes.size()):
 		var decoy = decoy_nodes[i]
 		var velocity = decoy_velocities[i]
+
 		if decoy == null or not is_instance_valid(decoy):
 			continue
 
 		decoy.position += velocity * delta
+
 		if decoy.position.x < rect.position.x:
 			decoy.position.x = rect.position.x
 			velocity.x = abs(velocity.x)
+
 		elif decoy.position.x + decoy.size.x > rect.position.x + rect.size.x:
 			decoy.position.x = rect.position.x + rect.size.x - decoy.size.x
 			velocity.x = -abs(velocity.x)
@@ -167,6 +398,7 @@ func move_decoys(delta):
 		if decoy.position.y < rect.position.y:
 			decoy.position.y = rect.position.y
 			velocity.y = abs(velocity.y)
+
 		elif decoy.position.y + decoy.size.y > rect.position.y + rect.size.y:
 			decoy.position.y = rect.position.y + rect.size.y - decoy.size.y
 			velocity.y = -abs(velocity.y)
@@ -174,12 +406,12 @@ func move_decoys(delta):
 		decoy_velocities[i] = velocity
 
 
-func _on_no_pressed():
-	if completed or error_time > 0:
+func _on_game_button_pressed():
+	if completed or failed or error_time > 0:
 		return
 
-	if is_agree_on_line():
-		show_error()
+	if is_disagree_on_line():
+		fail_level()
 		return
 
 	score += 1
@@ -190,13 +422,16 @@ func _on_no_pressed():
 		complete_level()
 
 
-func is_agree_on_line() -> bool:
+func is_disagree_on_line() -> bool:
 	var line_x = line.position.x + line.size.x / 2
+
 	for decoy in decoy_nodes:
 		if decoy == null or not is_instance_valid(decoy):
 			continue
+
 		if line_x >= decoy.position.x and line_x <= decoy.position.x + decoy.size.x:
 			return true
+
 	return false
 
 
@@ -204,25 +439,48 @@ func clear_decoys():
 	for decoy in decoy_nodes:
 		if decoy and is_instance_valid(decoy):
 			decoy.queue_free()
+
 	decoy_nodes.clear()
 	decoy_velocities.clear()
 
 
-func show_error():
-	score = 0
-	GameState.add_system_control(10)
-	update_score_label()
+func fail_level():
+	if failed:
+		return
+
+	failed = true
+
+	game_button.disabled = true
+	clear_decoys()
+
 	background.color = Color(0.95, 0.82, 0.82)
+
 	error_label.text = "CHYBA"
 	error_label.visible = true
-	error_time = 0.9
-	no_button.disabled = true
+
+	target_label.text = "Nesouhlasím"
+	style_red_pill(target_label)
+
+	score_label.text = "Reakce: %d/%d" % [score, target_score]
+
+	GameState.add_system_control(10)
+
+	await get_tree().create_timer(1.0).timeout
+	level_failed.emit()
 
 
 func complete_level():
+	if completed:
+		return
+
 	completed = true
 	background.color = Color(0.84, 0.94, 0.84)
-	no_button.disabled = true
+
+	game_button.disabled = true
+	clear_decoys()
+
+	target_label.text = "Souhlasím"
+	score_label.text = "Reakce: %d/%d" % [target_score, target_score]
 
 	await get_tree().create_timer(0.9).timeout
 	level_finished.emit()
@@ -248,11 +506,49 @@ func style_panel(panel: Panel):
 	sb.corner_radius_top_right = 6
 	sb.corner_radius_bottom_left = 6
 	sb.corner_radius_bottom_right = 6
+
 	panel.add_theme_stylebox_override("panel", sb)
 
 
-func style_label_pill(control: Control, bg: Color, border: Color):
-	var sb = make_button_style(bg, border, 8)
+func style_green_button(button: Button):
+	var normal = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 7)
+	var hover = make_button_style(Color(0.25, 0.75, 0.30), Color(0.10, 0.42, 0.15), 7)
+	var pressed = make_button_style(Color(0.10, 0.45, 0.16), Color(0.05, 0.26, 0.08), 7)
+	var disabled = make_button_style(Color(0.52, 0.62, 0.52), Color(0.32, 0.42, 0.32), 7)
+
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("disabled", disabled)
+
+	button.add_theme_color_override("font_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
+	button.add_theme_font_size_override("font_size", 17)
+
+
+func style_red_button(button: Button):
+	var normal = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 7)
+	var hover = make_button_style(Color(0.90, 0.18, 0.18), Color(0.50, 0.05, 0.05), 7)
+	var pressed = make_button_style(Color(0.52, 0.07, 0.07), Color(0.28, 0.02, 0.02), 7)
+	var disabled = make_button_style(Color(0.62, 0.48, 0.48), Color(0.42, 0.30, 0.30), 7)
+
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("disabled", disabled)
+
+	button.add_theme_color_override("font_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+	button.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
+	button.add_theme_font_size_override("font_size", 17)
+
+
+func style_green_pill(control: Control):
+	var sb = make_button_style(Color(0.18, 0.62, 0.22), Color(0.08, 0.36, 0.12), 8)
+
 	control.add_theme_stylebox_override("normal", sb)
 	control.add_theme_stylebox_override("hover", sb)
 	control.add_theme_stylebox_override("pressed", sb)
@@ -261,21 +557,15 @@ func style_label_pill(control: Control, bg: Color, border: Color):
 	control.add_theme_font_size_override("font_size", 14)
 
 
-func style_button_soft_xp(button):
-	var normal = make_button_style(Color(0.80, 0.96, 0.80), Color(0.10, 0.40, 0.62), 10)
-	var hover = make_button_style(Color(0.70, 1.0, 0.72), Color(0.05, 0.35, 0.78), 10)
-	var pressed = make_button_style(Color(0.58, 0.84, 0.62), Color(0.05, 0.28, 0.58), 10)
-	var disabled = make_button_style(Color(0.74, 0.78, 0.74), Color(0.42, 0.42, 0.42), 10)
+func style_red_pill(control: Control):
+	var sb = make_button_style(Color(0.72, 0.12, 0.12), Color(0.42, 0.04, 0.04), 8)
 
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-	button.add_theme_color_override("font_color", Color(0.10, 0.18, 0.50))
-	button.add_theme_color_override("font_hover_color", Color(0.08, 0.14, 0.45))
-	button.add_theme_color_override("font_pressed_color", Color(0.08, 0.14, 0.45))
-	button.add_theme_color_override("font_disabled_color", Color(0.42, 0.42, 0.42))
-	button.add_theme_font_size_override("font_size", 26)
+	control.add_theme_stylebox_override("normal", sb)
+	control.add_theme_stylebox_override("hover", sb)
+	control.add_theme_stylebox_override("pressed", sb)
+	control.add_theme_color_override("font_color", Color(1, 1, 1))
+	control.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	control.add_theme_font_size_override("font_size", 14)
 
 
 func make_button_style(bg: Color, border: Color, radius: int) -> StyleBoxFlat:
